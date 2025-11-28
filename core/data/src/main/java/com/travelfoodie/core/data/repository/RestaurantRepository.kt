@@ -150,13 +150,45 @@ class RestaurantRepository @Inject constructor(
     /**
      * Fallback to real world-famous restaurants when APIs fail
      */
-    private fun getFallbackRestaurants(
+    private suspend fun getFallbackRestaurants(
         regionId: String,
         regionName: String,
         lat: Double,
         lng: Double
     ): List<RestaurantEntity> {
         android.util.Log.d("RestaurantRepository", "Using fallback real restaurants for: $regionName")
+
+        // First, try a simple Google Places search for restaurants
+        if (BuildConfig.GOOGLE_PLACES_API_KEY.isNotEmpty()) {
+            try {
+                val response = googlePlacesApi.searchPlaces(
+                    query = "$regionName restaurant",
+                    apiKey = BuildConfig.GOOGLE_PLACES_API_KEY,
+                    language = "ko"
+                )
+                if (response.status == "OK" && response.results.isNotEmpty()) {
+                    android.util.Log.d("RestaurantRepository", "Fallback Google search found ${response.results.size} restaurants")
+                    return response.results.take(10).map { place ->
+                        RestaurantEntity(
+                            restaurantId = UUID.randomUUID().toString(),
+                            regionId = regionId,
+                            name = place.name,
+                            category = mapPlaceTypeToCategory(place.types),
+                            rating = place.rating?.toFloat() ?: 4.0f,
+                            distance = null,
+                            lat = place.geometry?.location?.lat ?: lat,
+                            lng = place.geometry?.location?.lng ?: lng,
+                            menu = null,
+                            hours = null,
+                            reservable = false,
+                            imageUrl = null
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("RestaurantRepository", "Fallback Google search failed: ${e.message}")
+            }
+        }
 
         // Match region to known cities and return their real famous restaurants
         val restaurants = when {
