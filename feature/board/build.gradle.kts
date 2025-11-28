@@ -52,4 +52,8 @@ dependencies {
     // Firebase for real-time chat sync
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.database)
+    implementation(libs.firebase.auth)
+
+    // Google Sign-In for email-based chat creation
+    implementation(libs.play.services.auth)
 }

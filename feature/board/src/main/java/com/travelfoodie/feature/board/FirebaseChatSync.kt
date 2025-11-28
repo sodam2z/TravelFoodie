@@ -20,22 +20,23 @@ class FirebaseChatSync @Inject constructor(
     private val database = FirebaseDatabase.getInstance()
     private val messagesRef = database.getReference("trip_messages")
 
-    fun syncMessages(tripId: String) {
-        val tripMessagesRef = messagesRef.child(tripId)
+    fun syncMessages(chatRoomId: String) {
+        val chatRoomMessagesRef = messagesRef.child(chatRoomId)
 
-        tripMessagesRef.addChildEventListener(object : ChildEventListener {
+        chatRoomMessagesRef.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val message = snapshot.getValue(FirebaseMessage::class.java)
                 message?.let {
                     val chatMessage = ChatMessageEntity(
                         messageId = it.messageId,
-                        tripId = tripId,
+                        chatRoomId = chatRoomId,
                         senderId = it.senderId,
                         senderName = it.senderName,
-                        message = it.message,
+                        text = it.message,
                         imageUrl = it.imageUrl,
+                        type = "text",
                         timestamp = it.timestamp,
-                        isRead = it.isRead
+                        synced = true
                     )
                     CoroutineScope(Dispatchers.IO).launch {
                         chatMessageDao.insertMessage(chatMessage)
@@ -48,13 +49,14 @@ class FirebaseChatSync @Inject constructor(
                 message?.let {
                     val chatMessage = ChatMessageEntity(
                         messageId = it.messageId,
-                        tripId = tripId,
+                        chatRoomId = chatRoomId,
                         senderId = it.senderId,
                         senderName = it.senderName,
-                        message = it.message,
+                        text = it.message,
                         imageUrl = it.imageUrl,
+                        type = "text",
                         timestamp = it.timestamp,
-                        isRead = it.isRead
+                        synced = true
                     )
                     CoroutineScope(Dispatchers.IO).launch {
                         chatMessageDao.updateMessage(chatMessage)
@@ -76,18 +78,18 @@ class FirebaseChatSync @Inject constructor(
         })
     }
 
-    fun sendMessage(tripId: String, message: ChatMessageEntity) {
+    fun sendMessage(chatRoomId: String, message: ChatMessageEntity) {
         val firebaseMessage = FirebaseMessage(
             messageId = message.messageId,
             senderId = message.senderId,
             senderName = message.senderName,
-            message = message.message,
+            message = message.text,
             imageUrl = message.imageUrl,
             timestamp = message.timestamp,
-            isRead = message.isRead
+            isRead = false
         )
 
-        messagesRef.child(tripId).child(message.messageId).setValue(firebaseMessage)
+        messagesRef.child(chatRoomId).child(message.messageId).setValue(firebaseMessage)
     }
 
     data class FirebaseMessage(

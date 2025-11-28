@@ -215,3 +215,41 @@ data class TripInvitationEntity(
     val sentAt: Long = System.currentTimeMillis(),
     val respondedAt: Long? = null
 )
+
+@Entity(
+    tableName = "chat_rooms",
+    indices = [Index("tripId"), Index("createdBy")]
+)
+data class ChatRoomEntity(
+    @PrimaryKey val chatRoomId: String,
+    val name: String,
+    val type: String, // "trip" or "friend"
+    val tripId: String? = null, // Null for friend chats
+    val createdBy: String,
+    val memberIds: String, // Comma-separated user IDs
+    val lastMessageText: String? = null,
+    val lastMessageTime: Long? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "user_invite_codes")
+data class UserInviteCodeEntity(
+    @PrimaryKey val userId: String,
+    val inviteCode: String, // 6-digit unique code
+    val generatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "voice_memos",
+    indices = [Index("tripId"), Index("userId")]
+)
+data class VoiceMemoEntity(
+    @PrimaryKey val memoId: String,
+    val tripId: String? = null, // Optional: link to a trip
+    val userId: String,
+    val title: String,
+    val transcribedText: String, // STT result
+    val audioFilePath: String? = null, // Path to saved audio file (optional)
+    val durationMs: Long = 0, // Duration in milliseconds
+    val createdAt: Long = System.currentTimeMillis()
+)

@@ -18,11 +18,14 @@ import com.travelfoodie.core.data.local.entity.*
         FavoriteEntity::class,
         NotifScheduleEntity::class,
         ReceiptEntity::class,
+        ChatRoomEntity::class,
         ChatMessageEntity::class,
         FriendEntity::class,
-        TripInvitationEntity::class
+        TripInvitationEntity::class,
+        UserInviteCodeEntity::class,
+        VoiceMemoEntity::class
     ],
-    version = 4, // Added FriendEntity and TripInvitationEntity
+    version = 6, // Added VoiceMemoEntity
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -38,11 +41,16 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun chatMessageDao(): ChatMessageDao
     abstract fun friendDao(): FriendDao
     abstract fun tripInvitationDao(): TripInvitationDao
+    abstract fun chatRoomDao(): ChatRoomDao
+    abstract fun userInviteCodeDao(): UserInviteCodeDao
+    abstract fun voiceMemoDao(): VoiceMemoDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        // Note: This getInstance is deprecated - use Hilt injection instead
+        // Database is provided via DataModule with proper migrations
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -50,7 +58,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "travel_foodie_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    // Removed fallbackToDestructiveMigration - use DataModule for proper migrations
                     .build()
                 INSTANCE = instance
                 instance

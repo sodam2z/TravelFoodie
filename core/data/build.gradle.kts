@@ -71,6 +71,11 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.core)
 
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-database-ktx")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
     // Core
     implementation(libs.core.ktx)
 }

@@ -2,6 +2,8 @@ package com.travelfoodie.core.data.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.travelfoodie.core.data.local.AppDatabase
@@ -42,6 +44,127 @@ annotation class GooglePlacesRetrofit
 @InstallIn(SingletonComponent::class)
 object DataModule {
 
+    // Migration from version 5 to 6: Add voice_memos table
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS voice_memos (
+                    memoId TEXT PRIMARY KEY NOT NULL,
+                    tripId TEXT,
+                    userId TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    transcribedText TEXT NOT NULL,
+                    audioFilePath TEXT,
+                    durationMs INTEGER NOT NULL DEFAULT 0,
+                    createdAt INTEGER NOT NULL
+                )
+            """.trimIndent())
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_voice_memos_tripId ON voice_memos(tripId)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_voice_memos_userId ON voice_memos(userId)")
+        }
+    }
+
+    // Migration from version 4 to 5 (if needed for user_invite_codes)
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS user_invite_codes (
+                    odCode TEXT PRIMARY KEY NOT NULL,
+                    odUserId TEXT NOT NULL,
+                    odCreatedAt INTEGER NOT NULL,
+                    odExpiresAt INTEGER
+                )
+            """.trimIndent())
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_user_invite_codes_odUserId ON user_invite_codes(odUserId)")
+        }
+    }
+
+    // Migration from version 3 to 4 (for chat and friends tables)
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Create chat_rooms table
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS chat_rooms (
+                    crChatRoomId TEXT PRIMARY KEY NOT NULL,
+                    crTripId TEXT,
+                    crChatName TEXT NOT NULL,
+                    crCreatedAt INTEGER NOT NULL,
+                    crLastMessageAt INTEGER
+                )
+            """.trimIndent())
+
+            // Create chat_messages table
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS chat_messages (
+                    cmMessageId TEXT PRIMARY KEY NOT NULL,
+                    cmChatRoomId TEXT NOT NULL,
+                    cmSenderId TEXT NOT NULL,
+                    cmSenderName TEXT NOT NULL,
+                    cmContent TEXT NOT NULL,
+                    cmTimestamp INTEGER NOT NULL,
+                    cmIsRead INTEGER NOT NULL DEFAULT 0
+                )
+            """.trimIndent())
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_chat_messages_cmChatRoomId ON chat_messages(cmChatRoomId)")
+
+            // Create friends table
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS friends (
+                    odFriendshipId TEXT PRIMARY KEY NOT NULL,
+                    odUserId TEXT NOT NULL,
+                    odFriendId TEXT NOT NULL,
+                    odFriendName TEXT NOT NULL,
+                    odFriendEmail TEXT,
+                    odStatus TEXT NOT NULL,
+                    odCreatedAt INTEGER NOT NULL
+                )
+            """.trimIndent())
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_friends_odUserId ON friends(odUserId)")
+
+            // Create trip_invitations table
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS trip_invitations (
+                    odInviteId TEXT PRIMARY KEY NOT NULL,
+                    odTripId TEXT NOT NULL,
+                    odInviterId TEXT NOT NULL,
+                    odInviteeId TEXT NOT NULL,
+                    odStatus TEXT NOT NULL,
+                    odCreatedAt INTEGER NOT NULL
+                )
+            """.trimIndent())
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_trip_invitations_odTripId ON trip_invitations(odTripId)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_trip_invitations_odInviteeId ON trip_invitations(odInviteeId)")
+        }
+    }
+
+    // Migration from version 2 to 3 (for receipts table)
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS receipts (
+                    receiptId TEXT PRIMARY KEY NOT NULL,
+                    tripId TEXT NOT NULL,
+                    userId TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    currency TEXT NOT NULL DEFAULT 'KRW',
+                    category TEXT NOT NULL,
+                    imageUri TEXT,
+                    createdAt INTEGER NOT NULL
+                )
+            """.trimIndent())
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_receipts_tripId ON receipts(tripId)")
+        }
+    }
+
+    // Migration from version 1 to 2 (for initial tables if any changes)
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Add any schema changes from version 1 to 2
+            // This is a placeholder - adjust based on actual schema changes
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -50,7 +173,15 @@ object DataModule {
             AppDatabase::class.java,
             "travelfoodie.db"
         )
-        .fallbackToDestructiveMigration() // Clear database on schema changes (dev only)
+        .addMigrations(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6
+        )
+        // Removed fallbackToDestructiveMigration() to preserve user data
+        // If migration fails, app will crash - this is intentional to catch migration issues early
         .build()
     }
 
@@ -83,6 +214,9 @@ object DataModule {
 
     @Provides
     fun provideChatMessageDao(database: AppDatabase) = database.chatMessageDao()
+
+    @Provides
+    fun provideVoiceMemoDao(database: AppDatabase) = database.voiceMemoDao()
 
     @Provides
     @Singleton
@@ -172,4 +306,16 @@ object DataModule {
     fun provideGooglePlacesApi(@GooglePlacesRetrofit retrofit: Retrofit): GooglePlacesApi {
         return retrofit.create(GooglePlacesApi::class.java)
     }
+
+    @Provides
+    fun provideFriendDao(database: AppDatabase) = database.friendDao()
+
+    @Provides
+    fun provideTripInvitationDao(database: AppDatabase) = database.tripInvitationDao()
+
+    @Provides
+    fun provideChatRoomDao(database: AppDatabase) = database.chatRoomDao()
+
+    @Provides
+    fun provideUserInviteCodeDao(database: AppDatabase) = database.userInviteCodeDao()
 }

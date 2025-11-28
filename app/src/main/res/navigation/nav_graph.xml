@@ -34,6 +34,12 @@
         <action
             android:id="@+id/action_profile_to_travel_companion"
             app:destination="@id/travelCompanionFragment" />
+        <action
+            android:id="@+id/action_profile_to_team_chat"
+            app:destination="@id/board_nav_graph" />
+        <action
+            android:id="@+id/action_profile_to_voice_memo"
+            app:destination="@id/voice_nav_graph" />
     </fragment>
 
     <fragment
@@ -44,6 +50,13 @@
     <fragment
         android:id="@+id/travelCompanionFragment"
         android:name="com.travelfoodie.TravelCompanionFragment"
-        android:label="여행 동반자" />
+        android:label="여행 동반자">
+        <action
+            android:id="@+id/action_travel_companion_to_chat_rooms"
+            app:destination="@id/board_nav_graph" />
+    </fragment>
+
+    <include app:graph="@navigation/board_nav_graph" />
+    <include app:graph="@navigation/voice_nav_graph" />
 
 </navigation>

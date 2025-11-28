@@ -228,3 +228,42 @@ interface TripInvitationDao {
     @Query("DELETE FROM trip_invitations WHERE tripId = :tripId")
     suspend fun deleteInvitationsByTrip(tripId: String)
 }
+
+@Dao
+interface ChatRoomDao {
+    @Query("SELECT * FROM chat_rooms WHERE chatRoomId = :chatRoomId")
+    suspend fun getChatRoomById(chatRoomId: String): ChatRoomEntity?
+
+    @Query("SELECT * FROM chat_rooms WHERE type = :type ORDER BY lastMessageTime DESC")
+    fun getChatRoomsByType(type: String): Flow<List<ChatRoomEntity>>
+
+    @Query("SELECT * FROM chat_rooms WHERE tripId = :tripId LIMIT 1")
+    suspend fun getChatRoomByTripId(tripId: String): ChatRoomEntity?
+
+    @Query("SELECT * FROM chat_rooms WHERE memberIds LIKE '%' || :userId || '%' ORDER BY lastMessageTime DESC")
+    fun getUserChatRooms(userId: String): Flow<List<ChatRoomEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertChatRoom(chatRoom: ChatRoomEntity)
+
+    @Update
+    suspend fun updateChatRoom(chatRoom: ChatRoomEntity)
+
+    @Delete
+    suspend fun deleteChatRoom(chatRoom: ChatRoomEntity)
+}
+
+@Dao
+interface UserInviteCodeDao {
+    @Query("SELECT * FROM user_invite_codes WHERE userId = :userId")
+    suspend fun getInviteCodeByUserId(userId: String): UserInviteCodeEntity?
+
+    @Query("SELECT * FROM user_invite_codes WHERE inviteCode = :inviteCode")
+    suspend fun getUserByInviteCode(inviteCode: String): UserInviteCodeEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInviteCode(inviteCode: UserInviteCodeEntity)
+
+    @Update
+    suspend fun updateInviteCode(inviteCode: UserInviteCodeEntity)
+}

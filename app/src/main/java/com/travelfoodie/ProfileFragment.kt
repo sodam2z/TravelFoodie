@@ -77,6 +77,7 @@ class ProfileFragment : Fragment() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
+
             pickImageLauncher.launch("image/*")
         } else {
             Toast.makeText(requireContext(), "카메라 권한이 필요합니다", Toast.LENGTH_SHORT).show()
@@ -202,6 +203,9 @@ class ProfileFragment : Fragment() {
                 Toast.makeText(requireContext(), "알림 설정 기능은 준비 중입니다", Toast.LENGTH_SHORT).show()
             }
 
+            // Team Chat
+            btnTeamChat.setOnClickListener { handleTeamChatClick() }
+
             btnPrivacy.setOnClickListener {
                 Toast.makeText(requireContext(), "개인정보처리방침", Toast.LENGTH_SHORT).show()
             }
@@ -210,15 +214,17 @@ class ProfileFragment : Fragment() {
                 Toast.makeText(requireContext(), "이용약관", Toast.LENGTH_SHORT).show()
             }
 
-            // Features - logged in mode
+            // Features - logged in mode (여행 도우미)
             btnStt.setOnClickListener { handleSttClick() }
             btnTts.setOnClickListener { handleTtsClick() }
             btnOcr.setOnClickListener { handleOcrClick() }
+            btnVoiceMemo.setOnClickListener { handleVoiceMemoClick() }
 
             // Features - guest mode
             btnGuestStt.setOnClickListener { handleSttClick() }
             btnGuestTts.setOnClickListener { handleTtsClick() }
             btnGuestOcr.setOnClickListener { handleOcrClick() }
+            btnGuestVoiceMemo.setOnClickListener { handleVoiceMemoClick() }
 
             btnSignout.setOnClickListener {
                 signOut()
@@ -337,6 +343,24 @@ class ProfileFragment : Fragment() {
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "위젯 추가 실패: ${e.message}", Toast.LENGTH_SHORT).show()
             android.util.Log.e("ProfileFragment", "Error adding widget", e)
+        }
+    }
+
+    // Team Chat Handler
+    private fun handleTeamChatClick() {
+        try {
+            findNavController().navigate(R.id.action_profile_to_team_chat)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "팀 채팅 기능은 준비 중입니다", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Voice Memo Handler
+    private fun handleVoiceMemoClick() {
+        try {
+            findNavController().navigate(R.id.action_profile_to_voice_memo)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "음성 메모 기능은 준비 중입니다", Toast.LENGTH_SHORT).show()
         }
     }
 

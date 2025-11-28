@@ -37,10 +37,20 @@ class ChatFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Get chatRoomId from arguments if available
+        val chatRoomId = arguments?.getString("chatRoomId")
+
         setupRecyclerView()
         setupMessageInput()
         observeMessages()
-        observeSelectedTrip()
+
+        if (chatRoomId != null) {
+            // Load messages for the specific chat room
+            viewModel.loadMessagesByChatRoom(chatRoomId)
+        } else {
+            // Fall back to observing selected trip
+            observeSelectedTrip()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -81,7 +91,7 @@ class ChatFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             sharedViewModel.selectedTripId.collect { tripId ->
                 if (tripId != null) {
-                    viewModel.loadMessages(tripId)
+                    viewModel.loadMessagesForTrip(tripId)
                 }
             }
         }

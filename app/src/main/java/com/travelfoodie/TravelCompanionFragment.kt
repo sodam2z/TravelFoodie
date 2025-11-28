@@ -118,6 +118,10 @@ class TravelCompanionFragment : Fragment() {
         binding.btnAddFromKakao.setOnClickListener {
             addFromKakaoFriends()
         }
+
+        binding.btnOpenChatRooms.setOnClickListener {
+            findNavController().navigate(R.id.action_travel_companion_to_chat_rooms)
+        }
     }
 
     private fun observeFriends() {

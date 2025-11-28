@@ -34,7 +34,7 @@ class ChatAdapter : ListAdapter<ChatMessageEntity, ChatAdapter.ChatViewHolder>(C
         fun bind(message: ChatMessageEntity) {
             binding.apply {
                 textViewSenderName.text = message.senderName
-                textViewMessage.text = message.message
+                textViewMessage.text = message.text
                 textViewTimestamp.text = timeFormat.format(Date(message.timestamp))
             }
         }

@@ -9,9 +9,9 @@ import androidx.room.PrimaryKey
     tableName = "chat_messages",
     foreignKeys = [
         ForeignKey(
-            entity = TripEntity::class,
-            parentColumns = ["tripId"],
-            childColumns = ["tripId"],
+            entity = ChatRoomEntity::class,
+            parentColumns = ["chatRoomId"],
+            childColumns = ["chatRoomId"],
             onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
@@ -21,16 +21,16 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("tripId"), Index("senderId")]
+    indices = [Index("chatRoomId"), Index("senderId"), Index("timestamp")]
 )
 data class ChatMessageEntity(
-    @PrimaryKey
-    val messageId: String,
-    val tripId: String,
+    @PrimaryKey val messageId: String,
+    val chatRoomId: String,
     val senderId: String,
     val senderName: String,
-    val message: String,
+    val text: String,
     val imageUrl: String? = null,
-    val timestamp: Long,
-    val isRead: Boolean = false
+    val type: String = "text", // "text", "image", "system"
+    val timestamp: Long = System.currentTimeMillis(),
+    val synced: Boolean = false // Track if synced to Firebase
 )
