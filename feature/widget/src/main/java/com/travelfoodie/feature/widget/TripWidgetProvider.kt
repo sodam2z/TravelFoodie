@@ -81,12 +81,19 @@ class TripWidgetProvider : AppWidgetProvider() {
                 val database = AppDatabase.getInstance(context)
                 val currentTime = System.currentTimeMillis()
 
-                // Get next upcoming trip (soonest start date in the future)
-                android.util.Log.d(TAG, "Querying database for upcoming trips...")
-                val nextTrip = database.tripDao().getUpcomingTrips(currentTime)
+                // Get active or upcoming trip (ongoing trips first, then future trips)
+                android.util.Log.d(TAG, "Querying database for active/upcoming trips...")
+                var nextTrip = database.tripDao().getActiveOrUpcomingTrips(currentTime)
                     .firstOrNull()
 
-                android.util.Log.d(TAG, "Found trip: ${nextTrip?.title ?: "null"}")
+                // If no active/upcoming trips, get the most recent trip (for newly created trips)
+                if (nextTrip == null) {
+                    android.util.Log.d(TAG, "No active/upcoming trips, checking all trips...")
+                    nextTrip = database.tripDao().getAllTripsOrderedByDate()
+                        .firstOrNull()
+                }
+
+                android.util.Log.d(TAG, "Found trip: ${nextTrip?.title ?: "null"}, startDate=${nextTrip?.startDate}, endDate=${nextTrip?.endDate}")
 
                 if (nextTrip != null) {
                     // Calculate D-day
@@ -186,12 +193,26 @@ class TripWidgetProvider : AppWidgetProvider() {
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "ERROR loading widget data: ${e.message}", e)
                 e.printStackTrace()
                 // Fallback to default display
                 CoroutineScope(Dispatchers.Main).launch {
                     views.setTextViewText(R.id.widget_trip_title, "여행 정보 로딩 실패")
                     views.setTextViewText(R.id.widget_trip_dday, "--")
                     views.setTextViewText(R.id.widget_trip_info, "앱을 열어 확인하세요")
+
+                    // Still set up click to open app
+                    val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    if (openAppIntent != null) {
+                        val openAppPendingIntent = PendingIntent.getActivity(
+                            context,
+                            0,
+                            openAppIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
+                    }
+
                     appWidgetManager.updateAppWidget(appWidgetId, views)
                 }
             }

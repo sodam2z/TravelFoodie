@@ -38,6 +38,27 @@ interface TripDao {
 
     @Query("SELECT * FROM trips WHERE startDate >= :currentTime ORDER BY startDate ASC")
     suspend fun getUpcomingTrips(currentTime: Long): List<TripEntity>
+
+    /**
+     * Get all trips that haven't ended yet (endDate >= currentTime) OR start in the future
+     * This includes ongoing trips and future trips
+     * Order by: ongoing trips first (startDate <= currentTime), then future trips by startDate
+     */
+    @Query("""
+        SELECT * FROM trips
+        WHERE endDate >= :currentTime OR startDate >= :currentTime
+        ORDER BY
+            CASE WHEN startDate <= :currentTime AND endDate >= :currentTime THEN 0 ELSE 1 END,
+            startDate ASC
+    """)
+    suspend fun getActiveOrUpcomingTrips(currentTime: Long): List<TripEntity>
+
+    /**
+     * Get ALL trips ordered by startDate descending (most recent first)
+     * Used for widget when no upcoming trips - shows the latest trip
+     */
+    @Query("SELECT * FROM trips ORDER BY startDate DESC")
+    suspend fun getAllTripsOrderedByDate(): List<TripEntity>
 }
 
 @Dao
