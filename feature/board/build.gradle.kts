@@ -53,7 +53,11 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.database)
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.storage)
 
     // Google Sign-In for email-based chat creation
     implementation(libs.play.services.auth)
+
+    // Image loading
+    implementation("io.coil-kt:coil:2.5.0")
 }

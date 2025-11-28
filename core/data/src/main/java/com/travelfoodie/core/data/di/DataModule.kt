@@ -64,6 +64,46 @@ object DataModule {
         }
     }
 
+    // Migration from version 6 to 7: Remove ForeignKey constraints from chat_messages
+    // This fixes crash when receiver opens chat (FK constraint failed because chatRoom/user not in local DB)
+    private val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Recreate chat_messages table without foreign keys
+            // Step 1: Create new table without FK constraints
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS chat_messages_new (
+                    messageId TEXT PRIMARY KEY NOT NULL,
+                    chatRoomId TEXT NOT NULL,
+                    senderId TEXT NOT NULL,
+                    senderName TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    imageUrl TEXT,
+                    type TEXT NOT NULL DEFAULT 'text',
+                    timestamp INTEGER NOT NULL,
+                    synced INTEGER NOT NULL DEFAULT 0
+                )
+            """.trimIndent())
+
+            // Step 2: Copy data from old table
+            database.execSQL("""
+                INSERT INTO chat_messages_new (messageId, chatRoomId, senderId, senderName, text, imageUrl, type, timestamp, synced)
+                SELECT messageId, chatRoomId, senderId, senderName, text, imageUrl, type, timestamp, synced
+                FROM chat_messages
+            """.trimIndent())
+
+            // Step 3: Drop old table
+            database.execSQL("DROP TABLE chat_messages")
+
+            // Step 4: Rename new table
+            database.execSQL("ALTER TABLE chat_messages_new RENAME TO chat_messages")
+
+            // Step 5: Recreate indices
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_chat_messages_chatRoomId ON chat_messages(chatRoomId)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_chat_messages_senderId ON chat_messages(senderId)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_chat_messages_timestamp ON chat_messages(timestamp)")
+        }
+    }
+
     // Migration from version 4 to 5 (if needed for user_invite_codes)
     private val MIGRATION_4_5 = object : Migration(4, 5) {
         override fun migrate(database: SupportSQLiteDatabase) {
@@ -178,7 +218,8 @@ object DataModule {
             MIGRATION_2_3,
             MIGRATION_3_4,
             MIGRATION_4_5,
-            MIGRATION_5_6
+            MIGRATION_5_6,
+            MIGRATION_6_7
         )
         // Removed fallbackToDestructiveMigration() to preserve user data
         // If migration fails, app will crash - this is intentional to catch migration issues early

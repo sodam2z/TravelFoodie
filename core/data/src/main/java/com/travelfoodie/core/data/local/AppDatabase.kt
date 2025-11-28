@@ -25,7 +25,7 @@ import com.travelfoodie.core.data.local.entity.*
         UserInviteCodeEntity::class,
         VoiceMemoEntity::class
     ],
-    version = 6, // Added VoiceMemoEntity
+    version = 7, // Removed ForeignKey constraints from ChatMessageEntity
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -1,8 +1,11 @@
 package com.travelfoodie.feature.board
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.storage.FirebaseStorage
 import com.travelfoodie.core.data.repository.ChatRepository
 import com.travelfoodie.core.data.local.entity.ChatMessageEntity
 import com.travelfoodie.core.data.local.entity.ChatRoomEntity
@@ -11,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,9 +43,15 @@ class ChatViewModel @Inject constructor(
 
     private fun loadUserChatRooms() {
         viewModelScope.launch {
-            // Pass both UID and email so rooms can be found by either
-            chatRepository.getUserChatRooms(currentUserId, currentUserEmail).collect { rooms ->
-                _chatRooms.value = rooms
+            try {
+                // Pass both UID and email so rooms can be found by either
+                chatRepository.getUserChatRooms(currentUserId, currentUserEmail).collect { rooms ->
+                    _chatRooms.value = rooms
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Keep empty list on error
+                _chatRooms.value = emptyList()
             }
         }
     }
@@ -48,8 +59,13 @@ class ChatViewModel @Inject constructor(
     fun loadMessagesByChatRoom(chatRoomId: String) {
         currentChatRoomId = chatRoomId
         viewModelScope.launch {
-            chatRepository.getMessagesByChatRoom(chatRoomId).collect { messageList ->
-                _messages.value = messageList
+            try {
+                chatRepository.getMessagesByChatRoom(chatRoomId).collect { messageList ->
+                    _messages.value = messageList
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _messages.value = emptyList()
             }
         }
     }
@@ -166,5 +182,55 @@ class ChatViewModel @Inject constructor(
     // Get chat room members
     suspend fun getChatRoomMembers(chatRoomId: String): List<String> {
         return chatRepository.getChatRoomMembers(chatRoomId)
+    }
+
+    // Get chat room member emails
+    suspend fun getChatRoomMemberEmails(chatRoomId: String): List<String> {
+        return chatRepository.getChatRoomMemberEmails(chatRoomId)
+    }
+
+    // Invite member by email
+    suspend fun inviteMemberByEmail(chatRoomId: String, email: String): Result<Unit> {
+        return chatRepository.inviteMemberByEmail(chatRoomId, email)
+    }
+
+    // Upload image to Firebase Storage and send as message
+    suspend fun uploadAndSendImage(
+        chatRoomId: String,
+        imageUri: Uri,
+        contentResolver: ContentResolver
+    ): Result<Unit> {
+        return try {
+            val userId = currentUserId
+            val userName = firebaseAuth.currentUser?.displayName ?: "User"
+
+            // Generate unique filename
+            val filename = "chat_images/${chatRoomId}/${UUID.randomUUID()}.jpg"
+            val storageRef = FirebaseStorage.getInstance().reference.child(filename)
+
+            // Upload image
+            val inputStream = contentResolver.openInputStream(imageUri)
+                ?: return Result.failure(Exception("Cannot read image"))
+
+            val uploadTask = storageRef.putStream(inputStream).await()
+
+            // Get download URL
+            val downloadUrl = storageRef.downloadUrl.await().toString()
+
+            // Send message with image URL
+            chatRepository.sendMessage(
+                chatRoomId = chatRoomId,
+                senderId = userId,
+                senderName = userName,
+                text = "",
+                imageUrl = downloadUrl,
+                type = "image"
+            )
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
     }
 }

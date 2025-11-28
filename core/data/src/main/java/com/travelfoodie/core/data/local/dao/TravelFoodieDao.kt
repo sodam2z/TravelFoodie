@@ -243,6 +243,12 @@ interface ChatRoomDao {
     @Query("SELECT * FROM chat_rooms WHERE memberIds LIKE '%' || :userId || '%' ORDER BY lastMessageTime DESC")
     fun getUserChatRooms(userId: String): Flow<List<ChatRoomEntity>>
 
+    @Query("SELECT * FROM chat_rooms WHERE memberIds LIKE '%' || :userId || '%' ORDER BY lastMessageTime DESC")
+    suspend fun getChatRoomsForUser(userId: String): List<ChatRoomEntity>
+
+    @Query("SELECT * FROM chat_rooms ORDER BY lastMessageTime DESC")
+    suspend fun getAllChatRooms(): List<ChatRoomEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChatRoom(chatRoom: ChatRoomEntity)
 

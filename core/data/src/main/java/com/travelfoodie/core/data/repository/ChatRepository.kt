@@ -33,6 +33,18 @@ class ChatRepository @Inject constructor(
     // Chat Room Management - Firebase Primary
     fun getUserChatRooms(userId: String, userEmail: String? = null): Flow<List<ChatRoomEntity>> {
         return callbackFlow {
+            // First emit cached data from local database
+            repositoryScope.launch {
+                try {
+                    val cachedRooms = chatRoomDao.getChatRoomsForUser(userId)
+                    if (cachedRooms.isNotEmpty()) {
+                        trySend(cachedRooms.sortedByDescending { it.lastMessageTime })
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
             val listener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val chatRooms = mutableListOf<ChatRoomEntity>()
@@ -92,7 +104,11 @@ class ChatRepository @Inject constructor(
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    close(error.toException())
+                    // Don't close the flow on error, just log it
+                    // This prevents crashes when Firebase has connection issues
+                    error.toException().printStackTrace()
+                    // Emit empty list on error so UI doesn't crash
+                    trySend(emptyList())
                 }
             }
 
@@ -300,16 +316,23 @@ class ChatRepository @Inject constructor(
                         }
                     }
 
-                    // Save to local database
+                    // Save to local database (wrapped in try-catch to prevent crashes)
                     repositoryScope.launch {
-                        chatMessageDao.insertMessages(messages)
+                        try {
+                            chatMessageDao.insertMessages(messages)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            // Don't crash if local DB insert fails - messages are still shown from Firebase
+                        }
                     }
 
                     trySend(messages.sortedBy { it.timestamp })
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    close(error.toException())
+                    // Don't close the flow on error, just log it
+                    error.toException().printStackTrace()
+                    trySend(emptyList())
                 }
             }
 
@@ -603,6 +626,57 @@ class ChatRepository @Inject constructor(
                 )
                 chatRoomDao.insertChatRoom(chatRoom)
             }
+        }
+    }
+
+    // Get chat room member emails
+    suspend fun getChatRoomMemberEmails(chatRoomId: String): List<String> {
+        return try {
+            val snapshot = chatRoomsRef.child(chatRoomId).get().await()
+            if (snapshot.exists()) {
+                snapshot.child("memberEmails").children.mapNotNull {
+                    it.getValue(String::class.java)
+                }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    // Invite member by email
+    suspend fun inviteMemberByEmail(chatRoomId: String, email: String): Result<Unit> {
+        return try {
+            val snapshot = chatRoomsRef.child(chatRoomId).get().await()
+            if (!snapshot.exists()) {
+                return Result.failure(Exception("Chat room not found"))
+            }
+
+            // Get current member emails
+            val currentMemberEmails = snapshot.child("memberEmails").children.mapNotNull {
+                it.getValue(String::class.java)
+            }.toMutableList()
+
+            // Add new email (avoid duplicates)
+            val normalizedEmail = email.lowercase()
+            if (!currentMemberEmails.contains(normalizedEmail)) {
+                currentMemberEmails.add(normalizedEmail)
+            } else {
+                return Result.failure(Exception("이미 초대된 멤버입니다"))
+            }
+
+            // Update Firebase
+            val updates = mapOf(
+                "memberEmails" to currentMemberEmails
+            )
+            chatRoomsRef.child(chatRoomId).updateChildren(updates).await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
         }
     }
 }

@@ -67,6 +67,15 @@ class ChatRoomListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Check if user is authenticated
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            Toast.makeText(requireContext(), "로그인이 필요합니다", Toast.LENGTH_SHORT).show()
+            // Navigate back or to login
+            findNavController().popBackStack()
+            return
+        }
+
         setupRecyclerView()
         setupFab()
         observeChatRooms()
