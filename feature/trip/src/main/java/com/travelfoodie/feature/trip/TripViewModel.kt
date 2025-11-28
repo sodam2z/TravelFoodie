@@ -2,6 +2,8 @@ package com.travelfoodie.feature.trip
 
 import android.app.AlarmManager
 import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
@@ -142,6 +144,9 @@ class TripViewModel @Inject constructor(
                     restaurantCount = restaurants.size
                 )
                 android.util.Log.d("TripViewModel", "Trip creation notification displayed")
+
+                // 7. Update home screen widget
+                updateWidget()
 
             } catch (e: Exception) {
                 android.util.Log.e("TripViewModel", "ERROR in createTripWithAutoGeneration: ${e.message}", e)
@@ -312,6 +317,45 @@ class TripViewModel @Inject constructor(
             } catch (e: Exception) {
                 android.util.Log.e("TripViewModel", "Error regenerating: ${e.message}", e)
             }
+        }
+    }
+
+    /**
+     * Update home screen widget immediately when trip data changes
+     */
+    private fun updateWidget() {
+        try {
+            android.util.Log.d("TripViewModel", "updateWidget() called")
+
+            // Get all widget IDs and force update
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val widgetComponentName = ComponentName(
+                context.packageName,
+                "com.travelfoodie.feature.widget.TripWidgetProvider"
+            )
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(widgetComponentName)
+
+            android.util.Log.d("TripViewModel", "Found ${appWidgetIds.size} widgets with component: $widgetComponentName")
+
+            if (appWidgetIds.isNotEmpty()) {
+                // Method 1: Send broadcast to trigger onUpdate
+                val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
+                    component = widgetComponentName
+                }
+                context.sendBroadcast(intent)
+                android.util.Log.d("TripViewModel", "Widget update broadcast sent for ${appWidgetIds.size} widgets: ${appWidgetIds.joinToString()}")
+
+                // Method 2: Also notify data changed for each widget
+                appWidgetIds.forEach { widgetId ->
+                    appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, android.R.id.list)
+                    android.util.Log.d("TripViewModel", "Notified widget $widgetId of data change")
+                }
+            } else {
+                android.util.Log.d("TripViewModel", "No widgets found to update - user may not have added widget to home screen")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("TripViewModel", "Failed to update widget: ${e.message}", e)
         }
     }
 }

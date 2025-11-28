@@ -3,6 +3,7 @@ package com.travelfoodie.feature.widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
@@ -17,12 +18,51 @@ import java.util.concurrent.TimeUnit
 
 class TripWidgetProvider : AppWidgetProvider() {
 
+    companion object {
+        private const val TAG = "TripWidgetProvider"
+        const val ACTION_REFRESH = "com.travelfoodie.widget.ACTION_REFRESH"
+
+        /**
+         * Call this method to update all widgets when trip data changes
+         */
+        fun updateAllWidgets(context: Context) {
+            android.util.Log.d(TAG, "updateAllWidgets() called")
+            val intent = Intent(context, TripWidgetProvider::class.java).apply {
+                action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+            }
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                ComponentName(context, TripWidgetProvider::class.java)
+            )
+            android.util.Log.d(TAG, "Found ${appWidgetIds.size} widgets to update")
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
+            context.sendBroadcast(intent)
+        }
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        android.util.Log.d(TAG, "onReceive: action=${intent.action}")
+        super.onReceive(context, intent)
+
+        // Handle refresh button click
+        if (intent.action == ACTION_REFRESH) {
+            android.util.Log.d(TAG, "Refresh button clicked - updating widgets")
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                ComponentName(context, TripWidgetProvider::class.java)
+            )
+            onUpdate(context, appWidgetManager, appWidgetIds)
+        }
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
+        android.util.Log.d(TAG, "onUpdate: updating ${appWidgetIds.size} widgets")
         for (appWidgetId in appWidgetIds) {
+            android.util.Log.d(TAG, "Updating widget ID: $appWidgetId")
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
     }
@@ -32,6 +72,7 @@ class TripWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
+        android.util.Log.d(TAG, "updateAppWidget started for widgetId: $appWidgetId")
         val views = RemoteViews(context.packageName, R.layout.widget_trip)
 
         // Load trip data from database asynchronously
@@ -41,8 +82,11 @@ class TripWidgetProvider : AppWidgetProvider() {
                 val currentTime = System.currentTimeMillis()
 
                 // Get next upcoming trip (soonest start date in the future)
+                android.util.Log.d(TAG, "Querying database for upcoming trips...")
                 val nextTrip = database.tripDao().getUpcomingTrips(currentTime)
                     .firstOrNull()
+
+                android.util.Log.d(TAG, "Found trip: ${nextTrip?.title ?: "null"}")
 
                 if (nextTrip != null) {
                     // Calculate D-day
@@ -84,14 +128,26 @@ class TripWidgetProvider : AppWidgetProvider() {
                         views.setTextViewText(R.id.widget_trip_info, "명소 ${poiCount}개 / 맛집 ${restaurantCount}개")
 
                         // Add click intent to open app
-                        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                        val pendingIntent = PendingIntent.getActivity(
+                        val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                        val openAppPendingIntent = PendingIntent.getActivity(
                             context,
                             0,
-                            intent,
+                            openAppIntent,
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                         )
-                        views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+                        views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
+
+                        // Add refresh button click intent
+                        val refreshIntent = Intent(context, TripWidgetProvider::class.java).apply {
+                            action = ACTION_REFRESH
+                        }
+                        val refreshPendingIntent = PendingIntent.getBroadcast(
+                            context,
+                            1,
+                            refreshIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
 
                         appWidgetManager.updateAppWidget(appWidgetId, views)
                     }
@@ -100,17 +156,31 @@ class TripWidgetProvider : AppWidgetProvider() {
                     CoroutineScope(Dispatchers.Main).launch {
                         views.setTextViewText(R.id.widget_trip_title, "예정된 여행 없음")
                         views.setTextViewText(R.id.widget_trip_dday, "--")
+                        views.setTextViewText(R.id.widget_trip_dates, "")
+                        views.setTextViewText(R.id.widget_trip_region, "")
                         views.setTextViewText(R.id.widget_trip_info, "새로운 여행을 계획하세요")
 
                         // Add click intent to open app
-                        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                        val pendingIntent = PendingIntent.getActivity(
+                        val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                        val openAppPendingIntent = PendingIntent.getActivity(
                             context,
                             0,
-                            intent,
+                            openAppIntent,
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                         )
-                        views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+                        views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
+
+                        // Add refresh button click intent
+                        val refreshIntent = Intent(context, TripWidgetProvider::class.java).apply {
+                            action = ACTION_REFRESH
+                        }
+                        val refreshPendingIntent = PendingIntent.getBroadcast(
+                            context,
+                            1,
+                            refreshIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
 
                         appWidgetManager.updateAppWidget(appWidgetId, views)
                     }

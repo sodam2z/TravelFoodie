@@ -123,16 +123,21 @@ class RestaurantListFragment : Fragment() {
     }
 
     private fun setupShakeDetector() {
+        android.util.Log.d("RestaurantListFragment", "Setting up ShakeDetector")
         shakeDetector = ShakeDetector(requireContext()) {
+            android.util.Log.d("RestaurantListFragment", "Shake callback triggered! isNearDestination=$isNearDestination, restaurantCount=${filteredRestaurants.size}")
             if (isNearDestination && filteredRestaurants.isNotEmpty()) {
+                android.util.Log.d("RestaurantListFragment", "Showing random restaurants dialog")
                 showRandomRestaurants()
             } else if (!isNearDestination) {
+                android.util.Log.d("RestaurantListFragment", "Not near destination - showing warning")
                 Snackbar.make(
                     binding.root,
                     "여행지 근처(1km 이내)에서만 랜덤 추천이 가능합니다",
                     Snackbar.LENGTH_LONG
                 ).show()
             } else {
+                android.util.Log.d("RestaurantListFragment", "No restaurants to recommend")
                 Snackbar.make(
                     binding.root,
                     "추천할 맛집이 없습니다",
@@ -341,11 +346,13 @@ class RestaurantListFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        android.util.Log.d("RestaurantListFragment", "onResume - starting ShakeDetector")
         shakeDetector?.start()
     }
 
     override fun onPause() {
         super.onPause()
+        android.util.Log.d("RestaurantListFragment", "onPause - stopping ShakeDetector")
         shakeDetector?.stop()
     }
 
