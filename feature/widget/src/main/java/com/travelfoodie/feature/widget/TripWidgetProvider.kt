@@ -79,16 +79,21 @@ class TripWidgetProvider : AppWidgetProvider() {
         val titleId = context.resources.getIdentifier("widget_trip_title", "id", packageName)
         val ddayId = context.resources.getIdentifier("widget_trip_dday", "id", packageName)
         val datesId = context.resources.getIdentifier("widget_trip_dates", "id", packageName)
-        val regionId = context.resources.getIdentifier("widget_trip_region", "id", packageName)
+        val regionViewId = context.resources.getIdentifier("widget_trip_region", "id", packageName)
         val infoId = context.resources.getIdentifier("widget_trip_info", "id", packageName)
         val containerId = context.resources.getIdentifier("widget_container", "id", packageName)
         val refreshButtonId = context.resources.getIdentifier("widget_refresh_button", "id", packageName)
 
-        android.util.Log.d(TAG, "Resource IDs - layout: $layoutId, title: $titleId, dday: $ddayId")
+        android.util.Log.d(TAG, "Resource IDs - layout: $layoutId, title: $titleId, dday: $ddayId, dates: $datesId, region: $regionViewId, info: $infoId, container: $containerId, refresh: $refreshButtonId")
 
         if (layoutId == 0) {
             android.util.Log.e(TAG, "Could not find widget_trip layout!")
             return
+        }
+
+        // Check for missing IDs
+        if (titleId == 0 || ddayId == 0 || datesId == 0 || regionViewId == 0 || infoId == 0) {
+            android.util.Log.e(TAG, "Some view IDs not found! title=$titleId, dday=$ddayId, dates=$datesId, region=$regionViewId, info=$infoId")
         }
 
         val views = RemoteViews(packageName, layoutId)
@@ -99,19 +104,25 @@ class TripWidgetProvider : AppWidgetProvider() {
                 val database = AppDatabase.getInstance(context)
                 val currentTime = System.currentTimeMillis()
 
+                // First check all trips in database
+                val allTrips = database.tripDao().getAllTripsOrderedByDate()
+                android.util.Log.d(TAG, "Total trips in database: ${allTrips.size}")
+                allTrips.forEachIndexed { index, trip ->
+                    android.util.Log.d(TAG, "  Trip $index: ${trip.title}, start=${trip.startDate}, end=${trip.endDate}")
+                }
+
                 // Get active or upcoming trip (ongoing trips first, then future trips)
-                android.util.Log.d(TAG, "Querying database for active/upcoming trips...")
+                android.util.Log.d(TAG, "Querying database for active/upcoming trips... currentTime=$currentTime")
                 var nextTrip = database.tripDao().getActiveOrUpcomingTrips(currentTime)
                     .firstOrNull()
 
                 // If no active/upcoming trips, get the most recent trip (for newly created trips)
-                if (nextTrip == null) {
-                    android.util.Log.d(TAG, "No active/upcoming trips, checking all trips...")
-                    nextTrip = database.tripDao().getAllTripsOrderedByDate()
-                        .firstOrNull()
+                if (nextTrip == null && allTrips.isNotEmpty()) {
+                    android.util.Log.d(TAG, "No active/upcoming trips, using first from all trips...")
+                    nextTrip = allTrips.firstOrNull()
                 }
 
-                android.util.Log.d(TAG, "Found trip: ${nextTrip?.title ?: "null"}, startDate=${nextTrip?.startDate}, endDate=${nextTrip?.endDate}")
+                android.util.Log.d(TAG, "Selected trip: ${nextTrip?.title ?: "null"}, startDate=${nextTrip?.startDate}, endDate=${nextTrip?.endDate}")
 
                 if (nextTrip != null) {
                     // Calculate D-day
@@ -151,7 +162,7 @@ class TripWidgetProvider : AppWidgetProvider() {
                         val region = firstRegion?.name ?: ""
                         val regionText = if (region.isNotEmpty()) "📍 $region" else ""
                         views.setTextViewText(datesId, dateRange)
-                        views.setTextViewText(regionId, regionText)
+                        views.setTextViewText(regionViewId, regionText)
                         views.setTextViewText(infoId, "명소 ${poiCount}개 / 맛집 ${restaurantCount}개")
 
                         // Add click intent to open app
@@ -188,7 +199,7 @@ class TripWidgetProvider : AppWidgetProvider() {
                         views.setTextViewText(titleId, "예정된 여행 없음")
                         views.setTextViewText(ddayId, "--")
                         views.setTextViewText(datesId, "")
-                        views.setTextViewText(regionId, "")
+                        views.setTextViewText(regionViewId, "")
                         views.setTextViewText(infoId, "새로운 여행을 계획하세요")
 
                         // Add click intent to open app
