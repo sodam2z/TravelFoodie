@@ -2,6 +2,7 @@ package com.travelfoodie.feature.trip
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -23,7 +24,10 @@ import com.travelfoodie.core.data.remote.GooglePlacesApi
 import com.travelfoodie.core.ui.SharedTripViewModel
 import com.travelfoodie.feature.trip.databinding.FragmentMapBinding
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -102,9 +106,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Check and request location permission
         checkLocationPermission()
 
-        // Handle map clicks
+        // Handle map clicks - reverse geocode to get location name
         googleMap?.setOnMapClickListener { latLng ->
-            onLocationSelected(latLng, "선택한 위치")
+            reverseGeocodeAndSelect(latLng)
         }
     }
 
@@ -165,6 +169,43 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 // Clear search text
                 binding.searchLocation.setText("")
             }
+        }
+    }
+
+    /**
+     * Reverse geocode coordinates to get actual location name (city, district, etc.)
+     */
+    private fun reverseGeocodeAndSelect(latLng: LatLng) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val locationName = withContext(Dispatchers.IO) {
+                try {
+                    val geocoder = Geocoder(requireContext(), Locale.getDefault())
+                    @Suppress("DEPRECATION")
+                    val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+
+                    if (!addresses.isNullOrEmpty()) {
+                        val address = addresses[0]
+                        // Build location name from address components
+                        // Priority: locality (city) > subLocality > adminArea > country
+                        when {
+                            !address.locality.isNullOrEmpty() -> address.locality
+                            !address.subLocality.isNullOrEmpty() -> address.subLocality
+                            !address.subAdminArea.isNullOrEmpty() -> address.subAdminArea
+                            !address.adminArea.isNullOrEmpty() -> address.adminArea
+                            !address.countryName.isNullOrEmpty() -> address.countryName
+                            else -> "선택한 위치"
+                        }
+                    } else {
+                        "선택한 위치"
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("MapFragment", "Geocoding failed: ${e.message}")
+                    "선택한 위치"
+                }
+            }
+
+            android.util.Log.d("MapFragment", "Reverse geocoded location: $locationName at $latLng")
+            onLocationSelected(latLng, locationName)
         }
     }
 
