@@ -69,6 +69,12 @@
                 android:resource="@xml/trip_widget_info" />
         </receiver>
 
+        <!-- Widget RemoteViews Service for ListView -->
+        <service
+            android:name=".widget.TripWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
         <!-- Boot Receiver for rescheduling alarms -->
         <receiver
             android:name=".receiver.BootReceiver"

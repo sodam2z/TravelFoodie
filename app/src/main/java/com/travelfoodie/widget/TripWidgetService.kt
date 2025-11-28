@@ -1,0 +1,105 @@
+package com.travelfoodie.widget
+
+import android.content.Context
+import android.content.Intent
+import android.widget.RemoteViews
+import android.widget.RemoteViewsService
+import com.travelfoodie.R
+import com.travelfoodie.core.data.local.AppDatabase
+import com.travelfoodie.core.data.local.entity.TripEntity
+import kotlinx.coroutines.runBlocking
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
+
+class TripWidgetService : RemoteViewsService() {
+    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
+        return TripRemoteViewsFactory(applicationContext)
+    }
+}
+
+class TripRemoteViewsFactory(
+    private val context: Context
+) : RemoteViewsService.RemoteViewsFactory {
+
+    private var trips: List<TripEntity> = emptyList()
+    private val dateFormat = SimpleDateFormat("MM/dd", Locale.getDefault())
+
+    override fun onCreate() {
+        android.util.Log.d("TripWidgetService", "onCreate")
+    }
+
+    override fun onDataSetChanged() {
+        android.util.Log.d("TripWidgetService", "onDataSetChanged - loading trips")
+        // Load trips from database
+        runBlocking {
+            try {
+                val database = AppDatabase.getInstance(context)
+                val currentTime = System.currentTimeMillis()
+
+                // Get active or upcoming trips
+                trips = database.tripDao().getActiveOrUpcomingTrips(currentTime)
+
+                // If no upcoming, get all trips
+                if (trips.isEmpty()) {
+                    trips = database.tripDao().getAllTripsOrderedByDate()
+                }
+
+                android.util.Log.d("TripWidgetService", "Loaded ${trips.size} trips")
+            } catch (e: Exception) {
+                android.util.Log.e("TripWidgetService", "Error loading trips: ${e.message}")
+                trips = emptyList()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        trips = emptyList()
+    }
+
+    override fun getCount(): Int = trips.size
+
+    override fun getViewAt(position: Int): RemoteViews {
+        if (position < 0 || position >= trips.size) {
+            return RemoteViews(context.packageName, R.layout.widget_trip_item)
+        }
+
+        val trip = trips[position]
+        val currentTime = System.currentTimeMillis()
+
+        // Calculate D-day
+        val daysUntil = TimeUnit.MILLISECONDS.toDays(trip.startDate - currentTime)
+        val dDayText = when {
+            daysUntil < 0 -> "완료"
+            daysUntil == 0L -> "D-Day"
+            else -> "D-$daysUntil"
+        }
+
+        // Format dates
+        val startDate = dateFormat.format(Date(trip.startDate))
+        val endDate = dateFormat.format(Date(trip.endDate))
+
+        val views = RemoteViews(context.packageName, R.layout.widget_trip_item).apply {
+            setTextViewText(R.id.widget_item_dday, dDayText)
+            setTextViewText(R.id.widget_item_title, trip.title)
+            setTextViewText(R.id.widget_item_dates, "$startDate - $endDate")
+            setTextViewText(R.id.widget_item_region, "📍 ${trip.regionName}")
+        }
+
+        // Set fill-in intent for item click
+        val fillInIntent = Intent().apply {
+            putExtra("trip_id", trip.tripId)
+        }
+        views.setOnClickFillInIntent(R.id.widget_item_container, fillInIntent)
+
+        return views
+    }
+
+    override fun getLoadingView(): RemoteViews? = null
+
+    override fun getViewTypeCount(): Int = 1
+
+    override fun getItemId(position: Int): Long = position.toLong()
+
+    override fun hasStableIds(): Boolean = true
+}

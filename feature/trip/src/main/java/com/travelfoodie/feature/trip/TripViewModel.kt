@@ -338,19 +338,23 @@ class TripViewModel @Inject constructor(
             android.util.Log.d("TripViewModel", "Found ${appWidgetIds.size} widgets with component: $widgetComponentName")
 
             if (appWidgetIds.isNotEmpty()) {
-                // Method 1: Send broadcast to trigger onUpdate
+                // Get the list view ID dynamically
+                val listViewId = context.resources.getIdentifier("widget_trip_list", "id", context.packageName)
+
+                // Notify data changed for each widget's list
+                appWidgetIds.forEach { widgetId ->
+                    if (listViewId != 0) {
+                        appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, listViewId)
+                    }
+                }
+
+                // Send broadcast to trigger onUpdate
                 val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                     component = widgetComponentName
                 }
                 context.sendBroadcast(intent)
                 android.util.Log.d("TripViewModel", "Widget update broadcast sent for ${appWidgetIds.size} widgets: ${appWidgetIds.joinToString()}")
-
-                // Method 2: Also notify data changed for each widget
-                appWidgetIds.forEach { widgetId ->
-                    appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, android.R.id.list)
-                    android.util.Log.d("TripViewModel", "Notified widget $widgetId of data change")
-                }
             } else {
                 android.util.Log.d("TripViewModel", "No widgets found to update - user may not have added widget to home screen")
             }
