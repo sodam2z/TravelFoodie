@@ -319,7 +319,7 @@ class ProfileFragment : Fragment() {
         try {
             // Launch the widget picker to allow user to add the widget to home screen
             val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(requireContext())
-            val myProvider = android.content.ComponentName(requireContext(), com.travelfoodie.feature.widget.TripWidgetProvider::class.java)
+            val myProvider = android.content.ComponentName(requireContext(), com.travelfoodie.widget.TripWidgetProvider::class.java)
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 // For Android O and above, request to pin the widget

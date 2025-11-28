@@ -58,7 +58,7 @@
 
         <!-- Widget Provider -->
         <receiver
-            android:name="com.travelfoodie.feature.widget.TripWidgetProvider"
+            android:name=".widget.TripWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

@@ -331,7 +331,7 @@ class TripViewModel @Inject constructor(
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val widgetComponentName = ComponentName(
                 context.packageName,
-                "com.travelfoodie.feature.widget.TripWidgetProvider"
+                "com.travelfoodie.widget.TripWidgetProvider"
             )
             val appWidgetIds = appWidgetManager.getAppWidgetIds(widgetComponentName)
 
