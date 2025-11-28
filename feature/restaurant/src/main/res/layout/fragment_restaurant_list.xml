@@ -4,6 +4,101 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Filter Chips for Category -->
+    <HorizontalScrollView
+        android:id="@+id/scroll_view_filters"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_filters"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true"
+            app:selectionRequired="false">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_all"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="전체"
+                android:checked="true" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_korean"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="한식" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_japanese"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="일식" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_chinese"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="중식" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_western"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="양식" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_cafe"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="카페" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_dessert"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="디저트" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_seafood"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="해산물" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </HorizontalScrollView>
+
+    <!-- Shake hint text -->
+    <TextView
+        android:id="@+id/text_shake_hint"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="4dp"
+        android:text="📱 흔들어서 랜덤 맛집 3곳 추천받기!"
+        android:textColor="@android:color/holo_blue_dark"
+        android:textSize="12sp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/scroll_view_filters" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view_restaurants"
         android:layout_width="0dp"
@@ -13,7 +108,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/text_shake_hint" />
 
     <TextView
         android:id="@+id/text_view_empty"

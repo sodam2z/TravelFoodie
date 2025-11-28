@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.airbnb.lottie.LottieDrawable
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.material.snackbar.Snackbar
 import com.travelfoodie.core.data.local.entity.RestaurantEntity
 import com.travelfoodie.core.sensors.ShakeDetector
 import com.travelfoodie.core.ui.SharedTripViewModel
@@ -43,7 +44,9 @@ class RestaurantListFragment : Fragment() {
     private var shakeDetector: ShakeDetector? = null
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var isNearDestination = false
-    private var currentRestaurants: List<RestaurantEntity> = emptyList()
+    private var allRestaurants: List<RestaurantEntity> = emptyList()
+    private var filteredRestaurants: List<RestaurantEntity> = emptyList()
+    private var currentFilter: String? = null
 
     // Location permission launcher
     private val locationPermissionRequest = registerForActivityResult(
@@ -78,27 +81,62 @@ class RestaurantListFragment : Fragment() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
         setupRecyclerView()
+        setupFilterChips()
         observeRestaurants()
         observeSelectedTrip()
         setupShakeDetector()
         checkLocationPermissionAndProximity()
     }
 
+    private fun setupFilterChips() {
+        binding.chipAll.setOnClickListener { applyFilter(null) }
+        binding.chipKorean.setOnClickListener { applyFilter("한식") }
+        binding.chipJapanese.setOnClickListener { applyFilter("일식") }
+        binding.chipChinese.setOnClickListener { applyFilter("중식") }
+        binding.chipWestern.setOnClickListener { applyFilter("양식") }
+        binding.chipCafe.setOnClickListener { applyFilter("카페") }
+        binding.chipDessert.setOnClickListener { applyFilter("디저트") }
+        binding.chipSeafood.setOnClickListener { applyFilter("해산물") }
+    }
+
+    private fun applyFilter(filter: String?) {
+        currentFilter = filter
+        filteredRestaurants = if (filter == null) {
+            allRestaurants
+        } else {
+            allRestaurants.filter { restaurant ->
+                restaurant.category.contains(filter, ignoreCase = true)
+            }
+        }
+        adapter.submitList(filteredRestaurants)
+        binding.textViewEmpty.visibility = if (filteredRestaurants.isEmpty()) View.VISIBLE else View.GONE
+
+        // Update chip selection state
+        binding.chipAll.isChecked = filter == null
+        binding.chipKorean.isChecked = filter == "한식"
+        binding.chipJapanese.isChecked = filter == "일식"
+        binding.chipChinese.isChecked = filter == "중식"
+        binding.chipWestern.isChecked = filter == "양식"
+        binding.chipCafe.isChecked = filter == "카페"
+        binding.chipDessert.isChecked = filter == "디저트"
+        binding.chipSeafood.isChecked = filter == "해산물"
+    }
+
     private fun setupShakeDetector() {
         shakeDetector = ShakeDetector(requireContext()) {
-            if (isNearDestination && currentRestaurants.isNotEmpty()) {
+            if (isNearDestination && filteredRestaurants.isNotEmpty()) {
                 showRandomRestaurants()
             } else if (!isNearDestination) {
-                com.google.android.material.snackbar.Snackbar.make(
+                Snackbar.make(
                     binding.root,
                     "여행지 근처(1km 이내)에서만 랜덤 추천이 가능합니다",
-                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                    Snackbar.LENGTH_LONG
                 ).show()
             } else {
-                com.google.android.material.snackbar.Snackbar.make(
+                Snackbar.make(
                     binding.root,
                     "추천할 맛집이 없습니다",
-                    com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                    Snackbar.LENGTH_SHORT
                 ).show()
             }
         }
@@ -139,9 +177,9 @@ class RestaurantListFragment : Fragment() {
 
                 @SuppressLint("MissingPermission")
                 val location = fusedLocationClient.lastLocation.await()
-                if (location != null && currentRestaurants.isNotEmpty()) {
+                if (location != null && allRestaurants.isNotEmpty()) {
                     // Check if we're within 1km of any restaurant
-                    val nearbyRestaurants = currentRestaurants.filter { restaurant ->
+                    val nearbyRestaurants = allRestaurants.filter { restaurant ->
                         val results = FloatArray(1)
                         Location.distanceBetween(
                             location.latitude,
@@ -156,11 +194,9 @@ class RestaurantListFragment : Fragment() {
                     isNearDestination = nearbyRestaurants.isNotEmpty()
 
                     if (isNearDestination) {
-                        com.google.android.material.snackbar.Snackbar.make(
-                            binding.root,
-                            "폰을 흔들어 랜덤 맛집 3곳을 추천받으세요!",
-                            com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-                        ).show()
+                        binding.textShakeHint.visibility = View.VISIBLE
+                    } else {
+                        binding.textShakeHint.visibility = View.GONE
                     }
                 }
             } catch (e: Exception) {
@@ -186,11 +222,11 @@ class RestaurantListFragment : Fragment() {
     }
 
     private fun showRandomRestaurants() {
-        if (currentRestaurants.size < 3) {
-            com.google.android.material.snackbar.Snackbar.make(
+        if (filteredRestaurants.size < 3) {
+            Snackbar.make(
                 binding.root,
                 "맛집이 3개 미만입니다",
-                com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                Snackbar.LENGTH_SHORT
             ).show()
             return
         }
@@ -205,7 +241,7 @@ class RestaurantListFragment : Fragment() {
         }
 
         // Select 3 random restaurants
-        val randomRestaurants = currentRestaurants.shuffled().take(3)
+        val randomRestaurants = filteredRestaurants.shuffled().take(3)
 
         // Show dialog with Lottie animation
         val dialogView = layoutInflater.inflate(R.layout.dialog_random_restaurants, null)
@@ -238,7 +274,7 @@ class RestaurantListFragment : Fragment() {
     }
 
     /**
-     * 🔗 CONNECTED: Observes SharedTripViewModel for trip selection
+     * Observes SharedTripViewModel for trip selection
      * When TripListFragment creates/selects a trip, this automatically loads restaurants
      */
     private fun observeSelectedTrip() {
@@ -292,11 +328,10 @@ class RestaurantListFragment : Fragment() {
     private fun observeRestaurants() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.restaurants.collect { restaurants ->
-                adapter.submitList(restaurants)
-                binding.textViewEmpty.visibility = if (restaurants.isEmpty()) View.VISIBLE else View.GONE
+                allRestaurants = restaurants
+                applyFilter(currentFilter)
 
                 // Update current restaurants for shake feature
-                currentRestaurants = restaurants
                 if (restaurants.isNotEmpty()) {
                     checkProximityToDestination()
                 }
