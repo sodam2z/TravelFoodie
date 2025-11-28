@@ -3,7 +3,7 @@
     android:id="@+id/widget_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@android:color/white"
     android:orientation="vertical"
     android:padding="16dp"
     android:clickable="true"
@@ -19,8 +19,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/widget_next_trip"
-            android:textColor="@color/text_primary"
+            android:text="다음 여행"
+            android:textColor="@android:color/black"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -28,9 +28,10 @@
             android:id="@+id/widget_refresh_button"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@android:color/transparent"
             android:src="@android:drawable/ic_popup_sync"
-            android:contentDescription="@string/refresh" />
+            android:scaleType="fitCenter"
+            android:contentDescription="새로고침" />
 
     </LinearLayout>
 
@@ -39,39 +40,40 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:gravity="center"
         android:text="D-5"
-        android:textColor="@color/primary"
+        android:textColor="#FF2196F3"
         android:textSize="24sp"
-        android:textStyle="bold"
-        android:gravity="center" />
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_trip_dates"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:gravity="center"
         android:text="03/15 - 03/18"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp"
-        android:gravity="center" />
+        android:textColor="@android:color/darker_gray"
+        android:textSize="12sp" />
 
     <TextView
         android:id="@+id/widget_trip_region"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:gravity="center"
         android:text="📍 서울"
-        android:textColor="@color/text_primary"
-        android:textSize="12sp"
-        android:gravity="center" />
+        android:textColor="@android:color/black"
+        android:textSize="12sp" />
 
     <TextView
         android:id="@+id/widget_trip_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:gravity="center"
         android:text="명소 5개 / 맛집 10개"
-        android:textColor="@color/text_secondary"
+        android:textColor="@android:color/darker_gray"
         android:textSize="12sp" />
 
 </LinearLayout>

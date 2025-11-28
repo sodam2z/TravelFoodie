@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import com.travelfoodie.core.data.local.AppDatabase
-import com.travelfoodie.feature.widget.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,7 +72,26 @@ class TripWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int
     ) {
         android.util.Log.d(TAG, "updateAppWidget started for widgetId: $appWidgetId")
-        val views = RemoteViews(context.packageName, R.layout.widget_trip)
+
+        // Get resource IDs dynamically from app's package
+        val packageName = context.packageName
+        val layoutId = context.resources.getIdentifier("widget_trip", "layout", packageName)
+        val titleId = context.resources.getIdentifier("widget_trip_title", "id", packageName)
+        val ddayId = context.resources.getIdentifier("widget_trip_dday", "id", packageName)
+        val datesId = context.resources.getIdentifier("widget_trip_dates", "id", packageName)
+        val regionId = context.resources.getIdentifier("widget_trip_region", "id", packageName)
+        val infoId = context.resources.getIdentifier("widget_trip_info", "id", packageName)
+        val containerId = context.resources.getIdentifier("widget_container", "id", packageName)
+        val refreshButtonId = context.resources.getIdentifier("widget_refresh_button", "id", packageName)
+
+        android.util.Log.d(TAG, "Resource IDs - layout: $layoutId, title: $titleId, dday: $ddayId")
+
+        if (layoutId == 0) {
+            android.util.Log.e(TAG, "Could not find widget_trip layout!")
+            return
+        }
+
+        val views = RemoteViews(packageName, layoutId)
 
         // Load trip data from database asynchronously
         CoroutineScope(Dispatchers.IO).launch {
@@ -123,26 +141,30 @@ class TripWidgetProvider : AppWidgetProvider() {
                     val endDate = dateFormat.format(Date(nextTrip.endDate))
                     val dateRange = "$startDate - $endDate"
 
+                    android.util.Log.d(TAG, "Widget data: title=${nextTrip.title}, dday=$dDayText, region=${firstRegion?.name}, pois=$poiCount, restaurants=$restaurantCount")
+
                     // Update widget on main thread
                     CoroutineScope(Dispatchers.Main).launch {
-                        views.setTextViewText(R.id.widget_trip_title, nextTrip.title)
-                        views.setTextViewText(R.id.widget_trip_dday, dDayText)
+                        views.setTextViewText(titleId, nextTrip.title)
+                        views.setTextViewText(ddayId, dDayText)
 
                         val region = firstRegion?.name ?: ""
                         val regionText = if (region.isNotEmpty()) "📍 $region" else ""
-                        views.setTextViewText(R.id.widget_trip_dates, dateRange)
-                        views.setTextViewText(R.id.widget_trip_region, regionText)
-                        views.setTextViewText(R.id.widget_trip_info, "명소 ${poiCount}개 / 맛집 ${restaurantCount}개")
+                        views.setTextViewText(datesId, dateRange)
+                        views.setTextViewText(regionId, regionText)
+                        views.setTextViewText(infoId, "명소 ${poiCount}개 / 맛집 ${restaurantCount}개")
 
                         // Add click intent to open app
-                        val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                        val openAppPendingIntent = PendingIntent.getActivity(
-                            context,
-                            0,
-                            openAppIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                        views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
+                        val openAppIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+                        if (openAppIntent != null) {
+                            val openAppPendingIntent = PendingIntent.getActivity(
+                                context,
+                                0,
+                                openAppIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                            )
+                            views.setOnClickPendingIntent(containerId, openAppPendingIntent)
+                        }
 
                         // Add refresh button click intent
                         val refreshIntent = Intent(context, TripWidgetProvider::class.java).apply {
@@ -154,28 +176,32 @@ class TripWidgetProvider : AppWidgetProvider() {
                             refreshIntent,
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                         )
-                        views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
+                        views.setOnClickPendingIntent(refreshButtonId, refreshPendingIntent)
 
                         appWidgetManager.updateAppWidget(appWidgetId, views)
+                        android.util.Log.d(TAG, "Widget updated successfully!")
                     }
                 } else {
                     // No upcoming trips
+                    android.util.Log.d(TAG, "No trips found, showing empty state")
                     CoroutineScope(Dispatchers.Main).launch {
-                        views.setTextViewText(R.id.widget_trip_title, "예정된 여행 없음")
-                        views.setTextViewText(R.id.widget_trip_dday, "--")
-                        views.setTextViewText(R.id.widget_trip_dates, "")
-                        views.setTextViewText(R.id.widget_trip_region, "")
-                        views.setTextViewText(R.id.widget_trip_info, "새로운 여행을 계획하세요")
+                        views.setTextViewText(titleId, "예정된 여행 없음")
+                        views.setTextViewText(ddayId, "--")
+                        views.setTextViewText(datesId, "")
+                        views.setTextViewText(regionId, "")
+                        views.setTextViewText(infoId, "새로운 여행을 계획하세요")
 
                         // Add click intent to open app
-                        val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                        val openAppPendingIntent = PendingIntent.getActivity(
-                            context,
-                            0,
-                            openAppIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                        views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
+                        val openAppIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+                        if (openAppIntent != null) {
+                            val openAppPendingIntent = PendingIntent.getActivity(
+                                context,
+                                0,
+                                openAppIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                            )
+                            views.setOnClickPendingIntent(containerId, openAppPendingIntent)
+                        }
 
                         // Add refresh button click intent
                         val refreshIntent = Intent(context, TripWidgetProvider::class.java).apply {
@@ -187,9 +213,10 @@ class TripWidgetProvider : AppWidgetProvider() {
                             refreshIntent,
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                         )
-                        views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
+                        views.setOnClickPendingIntent(refreshButtonId, refreshPendingIntent)
 
                         appWidgetManager.updateAppWidget(appWidgetId, views)
+                        android.util.Log.d(TAG, "Widget updated with empty state")
                     }
                 }
             } catch (e: Exception) {
@@ -197,12 +224,12 @@ class TripWidgetProvider : AppWidgetProvider() {
                 e.printStackTrace()
                 // Fallback to default display
                 CoroutineScope(Dispatchers.Main).launch {
-                    views.setTextViewText(R.id.widget_trip_title, "여행 정보 로딩 실패")
-                    views.setTextViewText(R.id.widget_trip_dday, "--")
-                    views.setTextViewText(R.id.widget_trip_info, "앱을 열어 확인하세요")
+                    views.setTextViewText(titleId, "여행 정보 로딩 실패")
+                    views.setTextViewText(ddayId, "--")
+                    views.setTextViewText(infoId, "앱을 열어 확인하세요")
 
                     // Still set up click to open app
-                    val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    val openAppIntent = context.packageManager.getLaunchIntentForPackage(packageName)
                     if (openAppIntent != null) {
                         val openAppPendingIntent = PendingIntent.getActivity(
                             context,
@@ -210,7 +237,7 @@ class TripWidgetProvider : AppWidgetProvider() {
                             openAppIntent,
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                         )
-                        views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
+                        views.setOnClickPendingIntent(containerId, openAppPendingIntent)
                     }
 
                     appWidgetManager.updateAppWidget(appWidgetId, views)
