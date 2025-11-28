@@ -168,13 +168,18 @@ class PoiRepository @Inject constructor(
                 maxTokens = 1000
             )
 
+            android.util.Log.d("PoiRepository", "Calling ChatGPT API for region: $regionName")
             val response = openAIApi.getChatCompletion(
                 authorization = "Bearer ${BuildConfig.OPENAI_API_KEY}",
                 request = request
             )
 
-            val content = response.choices.firstOrNull()?.message?.content ?: return emptyList()
-            android.util.Log.d("PoiRepository", "ChatGPT response: $content")
+            val content = response.choices.firstOrNull()?.message?.content
+            if (content.isNullOrEmpty()) {
+                android.util.Log.e("PoiRepository", "ChatGPT returned empty content")
+                return emptyList()
+            }
+            android.util.Log.d("PoiRepository", "ChatGPT response received (${content.length} chars): ${content.take(200)}...")
 
             // Parse JSON response
             parseChatGPTResponse(content)
@@ -409,15 +414,9 @@ class PoiRepository @Inject constructor(
                 PoiEntity(UUID.randomUUID().toString(), regionId, "우도", "자연", 4.6f, null, "아름다운 섬 속의 섬")
             )
             else -> {
-                // For unknown regions, return generic but properly named places
-                android.util.Log.w("PoiRepository", "Unknown region: $regionName, using generic real place suggestions")
-                listOf(
-                    PoiEntity(UUID.randomUUID().toString(), regionId, "${regionName} 시청 광장", "명소", 4.5f, null, "도시의 중심지"),
-                    PoiEntity(UUID.randomUUID().toString(), regionId, "${regionName} 국립박물관", "문화", 4.4f, null, "역사와 문화를 배울 수 있는 곳"),
-                    PoiEntity(UUID.randomUUID().toString(), regionId, "${regionName} 중앙공원", "자연", 4.3f, null, "휴식을 즐길 수 있는 공원"),
-                    PoiEntity(UUID.randomUUID().toString(), regionId, "${regionName} 타워", "전망대", 4.6f, null, "도시를 한눈에 볼 수 있는 곳"),
-                    PoiEntity(UUID.randomUUID().toString(), regionId, "${regionName} 전통시장", "시장", 4.2f, null, "현지 문화를 체험할 수 있는 시장")
-                )
+                // For unknown regions, return empty - DO NOT create fake place names
+                android.util.Log.w("PoiRepository", "Unknown region: $regionName - no real attractions found")
+                emptyList()
             }
         }
 
