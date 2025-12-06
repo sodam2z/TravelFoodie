@@ -90,6 +90,7 @@ class AttractionListFragment : Fragment() {
         setupRecyclerView()
         setupFilterChips()
         setupShakeDetector()
+        setupRandomRecommendFab()
         observeAttractions()
         observeSelectedTrip()
         checkLocationPermissionAndProximity()
@@ -138,7 +139,7 @@ class AttractionListFragment : Fragment() {
                 android.util.Log.d("AttractionListFragment", "Not near destination - showing warning")
                 Snackbar.make(
                     binding.root,
-                    "여행지 근처(1km 이내)에서만 랜덤 추천이 가능합니다",
+                    "여행지 근처(5km 이내)에서만 흔들기 추천이 가능합니다. FAB 버튼을 사용해 보세요!",
                     Snackbar.LENGTH_LONG
                 ).show()
             } else {
@@ -148,6 +149,16 @@ class AttractionListFragment : Fragment() {
                     "추천할 명소가 없습니다",
                     Snackbar.LENGTH_SHORT
                 ).show()
+            }
+        }
+    }
+
+    private fun setupRandomRecommendFab() {
+        binding.fabRandomRecommend.setOnClickListener {
+            if (filteredAttractions.isNotEmpty()) {
+                showRandomAttractions()  // Bypasses geofence limitation
+            } else {
+                Snackbar.make(binding.root, "추천할 명소가 없습니다.", Snackbar.LENGTH_SHORT).show()
             }
         }
     }

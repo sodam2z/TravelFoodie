@@ -47,11 +47,10 @@ class ShakeDetector(
             val y = event.values[1]
             val z = event.values[2]
 
-            // Calculate delta movement (for emulator which has stable values)
+            // Calculate delta movement for each axis separately
             val deltaX = kotlin.math.abs(x - lastX)
             val deltaY = kotlin.math.abs(y - lastY)
             val deltaZ = kotlin.math.abs(z - lastZ)
-            val deltaTotal = deltaX + deltaY + deltaZ
 
             lastX = x
             lastY = y
@@ -60,17 +59,20 @@ class ShakeDetector(
             val gForce = sqrt((x * x + y * y + z * z).toDouble()) / SensorManager.GRAVITY_EARTH
             val now = SystemClock.elapsedRealtime()
 
+            // Threshold for single axis movement (lowered for emulator)
+            val singleAxisThreshold = 3.0f
+
             // Log sensor values periodically (every 2 seconds) for debugging
             if (now - lastLogTime > 2000) {
-                android.util.Log.d(TAG, "Accelerometer: gForce=${"%.2f".format(gForce)}, delta=${"%.2f".format(deltaTotal)} (threshold=$shakeThreshold)")
+                android.util.Log.d(TAG, "Accelerometer: gForce=${"%.2f".format(gForce)}, deltaX=${"%.2f".format(deltaX)}, deltaY=${"%.2f".format(deltaY)}, deltaZ=${"%.2f".format(deltaZ)}")
                 lastLogTime = now
             }
 
-            // Detect shake by either high G-force OR significant delta change
-            val isShake = gForce > shakeThreshold || deltaTotal > 15.0
+            // Detect shake if ANY single axis moves significantly (easier for emulator)
+            val isShake = gForce > shakeThreshold || deltaX > singleAxisThreshold || deltaY > singleAxisThreshold || deltaZ > singleAxisThreshold
 
             if (isShake && now - lastShakeTime > shakeCooldown) {
-                android.util.Log.d(TAG, "SHAKE DETECTED! gForce=${"%.2f".format(gForce)}, delta=${"%.2f".format(deltaTotal)}")
+                android.util.Log.d(TAG, "SHAKE DETECTED! gForce=${"%.2f".format(gForce)}, deltaX=${"%.2f".format(deltaX)}, deltaY=${"%.2f".format(deltaY)}, deltaZ=${"%.2f".format(deltaZ)}")
                 lastShakeTime = now
                 onShake()
             }
