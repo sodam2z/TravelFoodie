@@ -84,10 +84,10 @@ object DataModule {
                 )
             """.trimIndent())
 
-            // Step 2: Copy data from old table
+            // Step 2: Copy data from old table (old columns had 'cm' prefix)
             database.execSQL("""
                 INSERT INTO chat_messages_new (messageId, chatRoomId, senderId, senderName, text, imageUrl, type, timestamp, synced)
-                SELECT messageId, chatRoomId, senderId, senderName, text, imageUrl, type, timestamp, synced
+                SELECT cmMessageId, cmChatRoomId, cmSenderId, cmSenderName, cmContent, NULL, 'text', cmTimestamp, cmIsRead
                 FROM chat_messages
             """.trimIndent())
 
@@ -221,8 +221,7 @@ object DataModule {
             MIGRATION_5_6,
             MIGRATION_6_7
         )
-        // Removed fallbackToDestructiveMigration() to preserve user data
-        // If migration fails, app will crash - this is intentional to catch migration issues early
+        .fallbackToDestructiveMigration()  // If migration fails, recreate database (loses local data but syncs from Firebase)
         .build()
     }
 
