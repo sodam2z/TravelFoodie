@@ -133,7 +133,7 @@ class RestaurantListFragment : Fragment() {
                 android.util.Log.d("RestaurantListFragment", "Not near destination - showing warning")
                 Snackbar.make(
                     binding.root,
-                    "여행지 근처(1km 이내)에서만 랜덤 추천이 가능합니다",
+                    "여행지 근처(5km 이내)에서만 랜덤 추천이 가능합니다",
                     Snackbar.LENGTH_LONG
                 ).show()
             } else {
@@ -183,7 +183,7 @@ class RestaurantListFragment : Fragment() {
                 @SuppressLint("MissingPermission")
                 val location = fusedLocationClient.lastLocation.await()
                 if (location != null && allRestaurants.isNotEmpty()) {
-                    // Check if we're within 1km of any restaurant
+                    // Check if we're within 5km of any restaurant
                     val nearbyRestaurants = allRestaurants.filter { restaurant ->
                         val results = FloatArray(1)
                         Location.distanceBetween(
@@ -193,7 +193,7 @@ class RestaurantListFragment : Fragment() {
                             restaurant.lng,
                             results
                         )
-                        results[0] <= 1000 // 1km in meters
+                        results[0] <= 5000 // 5km in meters
                     }
 
                     isNearDestination = nearbyRestaurants.isNotEmpty()
@@ -213,7 +213,7 @@ class RestaurantListFragment : Fragment() {
     private fun showLocationPermissionRationale() {
         AlertDialog.Builder(requireContext())
             .setTitle("위치 권한 필요")
-            .setMessage("랜덤 맛집 추천 기능을 사용하려면 위치 권한이 필요합니다. 여행지 근처(1km 이내)에서만 랜덤 추천을 받을 수 있습니다.")
+            .setMessage("랜덤 맛집 추천 기능을 사용하려면 위치 권한이 필요합니다. 여행지 근처(5km 이내)에서만 랜덤 추천을 받을 수 있습니다.")
             .setPositiveButton("권한 허용") { _, _ ->
                 locationPermissionRequest.launch(
                     arrayOf(
