@@ -44,8 +44,9 @@ class TripViewModel @Inject constructor(
     }
 
     private fun loadTrips() {
-        // Use actual Firebase Auth user ID
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "dev_user_001"
+        // Use dev_user_001 for consistency (trips are created with this userId)
+        // TODO: Migrate all trip creation to use Firebase Auth userId
+        val userId = "dev_user_001"
         android.util.Log.d("TripViewModel", "Loading trips for userId: $userId")
         viewModelScope.launch {
             tripRepository.getTripsByUser(userId).collect { tripList ->
