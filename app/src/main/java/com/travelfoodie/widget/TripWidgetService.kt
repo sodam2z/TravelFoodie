@@ -31,7 +31,7 @@ class TripRemoteViewsFactory(
 
     override fun onDataSetChanged() {
         android.util.Log.d("TripWidgetService", "onDataSetChanged - loading trips")
-        // Load trips from database
+        // Load trips from database - this is called when notifyAppWidgetViewDataChanged is invoked
         runBlocking {
             try {
                 val database = AppDatabase.getInstance(context)
@@ -45,7 +45,10 @@ class TripRemoteViewsFactory(
                     trips = database.tripDao().getAllTripsOrderedByDate()
                 }
 
-                android.util.Log.d("TripWidgetService", "Loaded ${trips.size} trips")
+                android.util.Log.d("TripWidgetService", "Loaded ${trips.size} trips at time $currentTime")
+                trips.forEach { trip ->
+                    android.util.Log.d("TripWidgetService", "Trip: ${trip.title}, start: ${trip.startDate}, end: ${trip.endDate}")
+                }
             } catch (e: Exception) {
                 android.util.Log.e("TripWidgetService", "Error loading trips: ${e.message}")
                 trips = emptyList()
@@ -67,12 +70,21 @@ class TripRemoteViewsFactory(
         val trip = trips[position]
         val currentTime = System.currentTimeMillis()
 
-        // Calculate D-day
-        val daysUntil = TimeUnit.MILLISECONDS.toDays(trip.startDate - currentTime)
+        // Calculate D-day based on trip status
+        val daysUntilStart = TimeUnit.MILLISECONDS.toDays(trip.startDate - currentTime)
+        val daysUntilEnd = TimeUnit.MILLISECONDS.toDays(trip.endDate - currentTime)
+        
         val dDayText = when {
-            daysUntil < 0 -> "완료"
-            daysUntil == 0L -> "D-Day"
-            else -> "D-$daysUntil"
+            // Trip has ended (end date is in the past)
+            trip.endDate < currentTime -> "완료"
+            // Trip is ongoing (started but not ended)
+            trip.startDate <= currentTime && trip.endDate >= currentTime -> "여행 중"
+            // Trip starts today
+            daysUntilStart == 0L -> "D-Day"
+            // Trip is in the future
+            daysUntilStart > 0 -> "D-$daysUntilStart"
+            // Fallback
+            else -> "완료"
         }
 
         // Format dates
@@ -83,7 +95,7 @@ class TripRemoteViewsFactory(
             setTextViewText(R.id.widget_item_dday, dDayText)
             setTextViewText(R.id.widget_item_title, trip.title)
             setTextViewText(R.id.widget_item_dates, "$startDate - $endDate")
-            setTextViewText(R.id.widget_item_region, "📍 ${trip.regionName}")
+            setTextViewText(R.id.widget_item_region, trip.regionName)
         }
 
         // Set fill-in intent for item click

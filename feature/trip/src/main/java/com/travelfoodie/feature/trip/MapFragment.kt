@@ -52,6 +52,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var placesAdapter: PlacesAutocompleteAdapter
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
+    // Location permission launcher
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -61,7 +62,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (fineLocationGranted || coarseLocationGranted) {
             enableMyLocation()
         } else {
-            Toast.makeText(requireContext(), "위치 권한이 필요합니다", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                "위치 권한이 필요합니다",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -79,51 +84,23 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
+        // Initialize map
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
+        // Setup search autocomplete
         setupSearchAutocomplete()
 
+        // Handle "Add Trip Here" button
         binding.btnAddTripHere.setOnClickListener {
             if (selectedLocationName != null && selectedLatLng != null) {
                 showAddTripDialog(selectedLocationName!!, selectedLatLng!!)
             }
         }
 
+        // Handle FAB My Location button
         binding.fabMyLocation.setOnClickListener {
             moveToCurrentLocation()
-        }
-    }
-
-    override fun onMapReady(map: GoogleMap) {
-        googleMap = map
-        val defaultLocation = LatLng(37.5665, 126.9780)
-        googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 10f))
-        googleMap?.uiSettings?.isZoomControlsEnabled = true
-        googleMap?.uiSettings?.isMyLocationButtonEnabled = false
-        checkLocationPermission()
-        googleMap?.setOnMapClickListener { latLng ->
-            reverseGeocodeAndSelect(latLng)
-        }
-    }
-
-    private fun checkLocationPermission() {
-        when {
-            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> {
-                enableMyLocation()
-            }
-            else -> {
-                locationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-            }
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun enableMyLocation() {
-        try {
-            googleMap?.isMyLocationEnabled = true
-        } catch (e: SecurityException) {
-            e.printStackTrace()
         }
     }
 
@@ -133,34 +110,98 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             locationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
             return
         }
-
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 val currentLatLng = LatLng(location.latitude, location.longitude)
                 googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
-                android.util.Log.d("MapFragment", "Moved to current location: $currentLatLng")
             } else {
                 Toast.makeText(requireContext(), "현재 위치를 찾을 수 없습니다. GPS를 확인해주세요.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    override fun onMapReady(map: GoogleMap) {
+        googleMap = map
+
+        // Default location (Seoul)
+        val defaultLocation = LatLng(37.5665, 126.9780)
+        googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 10f))
+
+        // Enable zoom controls
+        googleMap?.uiSettings?.isZoomControlsEnabled = true
+
+        // Check and request location permission
+        checkLocationPermission()
+
+        // Handle map clicks - reverse geocode to get location name
+        googleMap?.setOnMapClickListener { latLng ->
+            reverseGeocodeAndSelect(latLng)
+        }
+    }
+
+    private fun checkLocationPermission() {
+        when {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                enableMyLocation()
+            }
+            else -> {
+                // Request permission
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
+        }
+    }
+
+    @Suppress("MissingPermission")
+    private fun enableMyLocation() {
+        try {
+            googleMap?.isMyLocationEnabled = true
+            googleMap?.uiSettings?.isMyLocationButtonEnabled = true
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+        }
+    }
+
     private fun setupSearchAutocomplete() {
-        placesAdapter = PlacesAutocompleteAdapter(requireContext(), googlePlacesApi, com.travelfoodie.core.data.BuildConfig.GOOGLE_PLACES_API_KEY)
+        placesAdapter = PlacesAutocompleteAdapter(
+            requireContext(),
+            googlePlacesApi,
+            com.travelfoodie.core.data.BuildConfig.GOOGLE_PLACES_API_KEY
+        )
         binding.searchLocation.setAdapter(placesAdapter)
         binding.searchLocation.threshold = 3
 
-        binding.searchLocation.setOnItemClickListener { _, _, position, _ ->
+        // Handle place selection from search
+        binding.searchLocation.setOnItemClickListener { parent, _, position, _ ->
             val selectedPlace = placesAdapter.getPlaceAtPosition(position)
             if (selectedPlace != null) {
-                val latLng = LatLng(selectedPlace.lat ?: 37.5665, selectedPlace.lng ?: 126.9780)
+                val latLng = LatLng(
+                    selectedPlace.lat ?: 37.5665,
+                    selectedPlace.lng ?: 126.9780
+                )
                 onLocationSelected(latLng, selectedPlace.description)
-                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
+
+                // Move camera to selected location
+                googleMap?.animateCamera(
+                    CameraUpdateFactory.newLatLngZoom(latLng, 12f)
+                )
+
+                // Clear search text
                 binding.searchLocation.setText("")
             }
         }
     }
 
+    /**
+     * Reverse geocode coordinates to get actual location name (city, district, etc.)
+     */
     private fun reverseGeocodeAndSelect(latLng: LatLng) {
         viewLifecycleOwner.lifecycleScope.launch {
             val locationName = withContext(Dispatchers.IO) {
@@ -168,8 +209,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     val geocoder = Geocoder(requireContext(), Locale.getDefault())
                     @Suppress("DEPRECATION")
                     val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+
                     if (!addresses.isNullOrEmpty()) {
                         val address = addresses[0]
+                        // Build location name from address components
+                        // Priority: locality (city) > subLocality > adminArea > country
                         when {
                             !address.locality.isNullOrEmpty() -> address.locality
                             !address.subLocality.isNullOrEmpty() -> address.subLocality
@@ -178,24 +222,41 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                             !address.countryName.isNullOrEmpty() -> address.countryName
                             else -> "선택한 위치"
                         }
-                    } else { "선택한 위치" }
+                    } else {
+                        "선택한 위치"
+                    }
                 } catch (e: Exception) {
                     android.util.Log.e("MapFragment", "Geocoding failed: ${e.message}")
                     "선택한 위치"
                 }
             }
+
+            android.util.Log.d("MapFragment", "Reverse geocoded location: $locationName at $latLng")
             onLocationSelected(latLng, locationName)
         }
     }
 
     private fun onLocationSelected(latLng: LatLng, locationName: String) {
+        // Remove previous marker
         selectedMarker?.remove()
-        selectedMarker = googleMap?.addMarker(MarkerOptions().position(latLng).title(locationName))
+
+        // Add new marker
+        selectedMarker = googleMap?.addMarker(
+            MarkerOptions()
+                .position(latLng)
+                .title(locationName)
+        )
+
+        // Store selected location
         selectedLocationName = locationName
         selectedLatLng = latLng
+
+        // Show selected location card
         binding.cardSelectedLocation.visibility = View.VISIBLE
         binding.textSelectedLocation.text = locationName
         binding.textSelectedCoordinates.text = "${String.format("%.4f", latLng.latitude)}, ${String.format("%.4f", latLng.longitude)}"
+
+        android.util.Log.d("MapFragment", "Location selected: $locationName at ($latLng)")
     }
 
     private fun showAddTripDialog(locationName: String, latLng: LatLng) {
@@ -204,35 +265,58 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         var endDateMillis: Long = 0
         val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
 
+        // Pre-fill the region with selected location
         dialogBinding.editRegion.setText(locationName)
-        dialogBinding.editRegion.isEnabled = false
+        dialogBinding.editRegion.isEnabled = false // Disable editing
 
+        // Setup Start Date Picker
         dialogBinding.editStartDate.setOnClickListener {
             val calendar = java.util.Calendar.getInstance()
-            android.app.DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
-                calendar.set(year, month, dayOfMonth)
-                startDateMillis = calendar.timeInMillis
-                dialogBinding.editStartDate.setText(dateFormat.format(calendar.time))
-            }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
+            android.app.DatePickerDialog(
+                requireContext(),
+                { _, year, month, dayOfMonth ->
+                    calendar.set(year, month, dayOfMonth)
+                    startDateMillis = calendar.timeInMillis
+                    dialogBinding.editStartDate.setText(dateFormat.format(calendar.time))
+                },
+                calendar.get(java.util.Calendar.YEAR),
+                calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            ).show()
         }
 
+        // Setup End Date Picker
         dialogBinding.editEndDate.setOnClickListener {
             val calendar = java.util.Calendar.getInstance()
-            android.app.DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
-                calendar.set(year, month, dayOfMonth)
-                endDateMillis = calendar.timeInMillis
-                dialogBinding.editEndDate.setText(dateFormat.format(calendar.time))
-            }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
+            android.app.DatePickerDialog(
+                requireContext(),
+                { _, year, month, dayOfMonth ->
+                    calendar.set(year, month, dayOfMonth)
+                    endDateMillis = calendar.timeInMillis
+                    dialogBinding.editEndDate.setText(dateFormat.format(calendar.time))
+                },
+                calendar.get(java.util.Calendar.YEAR),
+                calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            ).show()
         }
 
-        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext()).setView(dialogBinding.root).create()
+        // Create Dialog
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
 
-        dialogBinding.btnCancel.setOnClickListener { dialog.dismiss() }
+        // Cancel Button
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
 
+        // Save Button
         dialogBinding.btnSave.setOnClickListener {
             val title = dialogBinding.editTripTitle.text.toString().trim()
             val members = dialogBinding.editMembers.text.toString().trim().ifEmpty { "1" }
 
+            // Get selected themes (multiple selection)
             val selectedThemes = mutableListOf<String>()
             for (chipId in dialogBinding.chipGroupTheme.checkedChipIds) {
                 val themeText = when (chipId) {
@@ -243,31 +327,74 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     R.id.chip_food -> "맛집 투어"
                     else -> null
                 }
-                if (themeText != null) selectedThemes.add(themeText)
+                if (themeText != null) {
+                    selectedThemes.add(themeText)
+                }
             }
             val theme = if (selectedThemes.isEmpty()) "액티브" else selectedThemes.joinToString(",")
 
+            // Validation
             when {
-                title.isEmpty() -> { Toast.makeText(requireContext(), "여행 제목을 입력하세요", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
-                startDateMillis == 0L -> { Toast.makeText(requireContext(), "출발일을 선택하세요", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
-                endDateMillis == 0L -> { Toast.makeText(requireContext(), "도착일을 선택하세요", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
-                startDateMillis > endDateMillis -> { Toast.makeText(requireContext(), "출발일이 도착일보다 늦을 수 없습니다", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
+                title.isEmpty() -> {
+                    Toast.makeText(requireContext(), "여행 제목을 입력하세요", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                startDateMillis == 0L -> {
+                    Toast.makeText(requireContext(), "출발일을 선택하세요", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                endDateMillis == 0L -> {
+                    Toast.makeText(requireContext(), "도착일을 선택하세요", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                startDateMillis > endDateMillis -> {
+                    Toast.makeText(requireContext(), "출발일이 도착일보다 늦을 수 없습니다", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
             }
 
+            // Create trip with map-selected coordinates
             val tripId = java.util.UUID.randomUUID().toString()
-            val trip = com.travelfoodie.core.data.local.entity.TripEntity(tripId = tripId, userId = "dev_user_001", title = title, startDate = startDateMillis, endDate = endDateMillis, theme = theme, members = members, regionName = locationName)
+            val trip = com.travelfoodie.core.data.local.entity.TripEntity(
+                tripId = tripId,
+                userId = "dev_user_001",
+                title = title,
+                startDate = startDateMillis,
+                endDate = endDateMillis,
+                theme = theme,
+                members = members,
+                regionName = locationName
+            )
 
+            // Create trip using TripViewModel
             viewLifecycleOwner.lifecycleScope.launch {
-                val tripViewModel = (requireActivity() as? androidx.appcompat.app.AppCompatActivity)?.let { androidx.lifecycle.ViewModelProvider(it)[TripViewModel::class.java] }
+                // Get TripViewModel from parent activity
+                val tripViewModel = (requireActivity() as? androidx.appcompat.app.AppCompatActivity)
+                    ?.let { androidx.lifecycle.ViewModelProvider(it)[TripViewModel::class.java] }
+
                 if (tripViewModel != null) {
-                    tripViewModel.createTripWithAutoGeneration(trip, locationName, members, latLng.latitude, latLng.longitude)
+                    android.util.Log.d("MapFragment", "Creating trip from map: $locationName at (${latLng.latitude}, ${latLng.longitude})")
+                    tripViewModel.createTripWithAutoGeneration(
+                        trip,
+                        locationName,
+                        members,
+                        latLng.latitude,
+                        latLng.longitude
+                    )
+
                     dialog.dismiss()
-                    Toast.makeText(requireContext(), "여행을 생성하고 있습니다...\n여행 탭에서 확인하세요!", Toast.LENGTH_LONG).show()
+
+                    Toast.makeText(
+                        requireContext(),
+                        "여행을 생성하고 있습니다...\n여행 탭에서 확인하세요!",
+                        Toast.LENGTH_LONG
+                    ).show()
                 } else {
                     Toast.makeText(requireContext(), "오류가 발생했습니다", Toast.LENGTH_SHORT).show()
                 }
             }
         }
+
         dialog.show()
     }
 
