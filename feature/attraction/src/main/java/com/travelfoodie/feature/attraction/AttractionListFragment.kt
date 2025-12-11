@@ -289,7 +289,7 @@ class AttractionListFragment : Fragment() {
                 isTtsInitialized = result != TextToSpeech.LANG_MISSING_DATA &&
                         result != TextToSpeech.LANG_NOT_SUPPORTED
 
-                if (isTtsInitialized) {
+                if (isTtsInitialized && _binding != null) {
                     Snackbar.make(
                         binding.root,
                         "명소 설명을 클릭하면 읽어드립니다",
