@@ -37,13 +37,23 @@ class TripRemoteViewsFactory(
                 val database = AppDatabase.getInstance(context)
                 val currentTime = System.currentTimeMillis()
 
-                // Get active or upcoming trips
-                trips = database.tripDao().getActiveOrUpcomingTrips(currentTime)
+                // Get ALL trips and sort them: ongoing first, then upcoming, then completed
+                val allTrips = database.tripDao().getAllTripsOrderedByDate()
 
-                // If no upcoming, get all trips
-                if (trips.isEmpty()) {
-                    trips = database.tripDao().getAllTripsOrderedByDate()
-                }
+                trips = allTrips.sortedWith(compareBy(
+                    // Priority 1: Ongoing trips (currently in progress)
+                    { trip ->
+                        if (trip.startDate <= currentTime && trip.endDate >= currentTime) 0 else 1
+                    },
+                    // Priority 2: Upcoming trips (sorted by start date ascending)
+                    { trip ->
+                        if (trip.startDate > currentTime) trip.startDate else Long.MAX_VALUE
+                    },
+                    // Priority 3: Completed trips (sorted by end date descending - most recent first)
+                    { trip ->
+                        if (trip.endDate < currentTime) -trip.endDate else 0
+                    }
+                ))
 
                 android.util.Log.d("TripWidgetService", "Loaded ${trips.size} trips at time $currentTime")
                 trips.forEach { trip ->

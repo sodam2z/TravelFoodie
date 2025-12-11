@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
 import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
@@ -43,10 +44,12 @@ class TripViewModel @Inject constructor(
     }
 
     private fun loadTrips() {
-        // TODO: Replace with actual Firebase Auth user ID when Firebase is configured
-        val userId = "dev_user_001"
+        // Use actual Firebase Auth user ID
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "dev_user_001"
+        android.util.Log.d("TripViewModel", "Loading trips for userId: $userId")
         viewModelScope.launch {
             tripRepository.getTripsByUser(userId).collect { tripList ->
+                android.util.Log.d("TripViewModel", "Loaded ${tripList.size} trips from Room")
                 _trips.value = tripList
             }
         }
