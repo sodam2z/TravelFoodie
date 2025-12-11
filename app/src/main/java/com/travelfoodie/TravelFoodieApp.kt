@@ -32,17 +32,20 @@ class TravelFoodieApp : Application() {
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_TRAVEL_REMINDERS,
-                "Travel Reminders",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Notifications for upcoming trips"
-                enableVibration(true)
-            }
-
             val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager?.createNotificationChannel(channel)
+
+            // Main channel for trip creation and reminders - HIGH importance for heads-up notifications
+            val tripChannel = NotificationChannel(
+                CHANNEL_TRAVEL_REMINDERS,
+                "여행 알림",
+                NotificationManager.IMPORTANCE_HIGH  // Changed to HIGH for heads-up notifications
+            ).apply {
+                description = "새 여행 생성 및 일정 알림"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 300, 100, 300)
+                setShowBadge(true)
+            }
+            notificationManager?.createNotificationChannel(tripChannel)
         }
     }
 

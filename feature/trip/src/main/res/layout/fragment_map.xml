@@ -43,6 +43,20 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- My Location FAB Button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_my_location"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:layout_marginBottom="180dp"
+        android:src="@android:drawable/ic_menu_mylocation"
+        android:contentDescription="현재 위치로 이동"
+        app:fabSize="normal"
+        app:elevation="6dp"
+        app:backgroundTint="@android:color/white" />
+
     <!-- Selected Location Card -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_selected_location"
